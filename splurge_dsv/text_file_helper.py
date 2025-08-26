@@ -306,15 +306,38 @@ class TextFileHelper:
                     return []
             
             try:
-                lines: list[str] = [line.strip() if strip else line.rstrip("\n") for line in stream]
+                if skip_footer_rows > 0:
+                    # Buffer to hold the last skip_footer_rows + 1 lines
+                    buffer = deque(maxlen=skip_footer_rows + 1)
+                    result: list[str] = []
+                    
+                    for line in stream:
+                        processed_line = line.strip() if strip else line.rstrip("\n")
+                        
+                        # Add current line to buffer
+                        buffer.append(processed_line)
+                        
+                        # Wait until the buffer is full (skip_footer_rows + 1 lines) before processing lines.
+                        # This ensures we have enough lines to reliably identify and skip the footer rows at the end.
+                        if len(buffer) < skip_footer_rows + 1:
+                            continue
+                        
+                        # Once the buffer contains more than skip_footer_rows lines, the oldest line (removed with popleft)
+                        # is guaranteed not to be part of the footer and can be safely processed and added to the result.
+                        safe_line = buffer.popleft()
+                        result.append(safe_line)
+                    
+                    # At the end, the buffer contains exactly the footer rows to skip
+                    # All other lines have already been processed and added to result
+                    return result
+                else:
+                    result: list[str] = []
+                    for line in stream:
+                        processed_line = line.strip() if strip else line.rstrip("\n")
+                        result.append(processed_line)
+                    return result
             except UnicodeDecodeError as e:
                 raise SplurgeFileEncodingError(
                     f"Encoding error reading file: {validated_path}",
                     details=str(e)
                 )
-            
-            if skip_footer_rows > 0:
-                if skip_footer_rows >= len(lines):
-                    return []
-                lines = lines[:-skip_footer_rows]
-            return lines

@@ -175,7 +175,7 @@ class PathValidator:
         # Special handling for colons - only allow them in Windows drive letters (e.g., C:)
         if ':' in path_str:
             # Check if it's a valid Windows drive letter pattern
-            # Must be C: or C:\ followed by path, or C: at the end
+            # Must be C: at the end of the string, or C:\ (or C:/) followed by path; not C: followed by other content
             if not re.match(r'^[A-Za-z]:$', path_str) and not re.match(r'^[A-Za-z]:[\\/]', path_str):
                 raise SplurgePathValidationError(
                     "Path contains colon in invalid position",
