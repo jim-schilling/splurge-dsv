@@ -177,11 +177,19 @@ class TestStringTokenizerRemoveBookends:
         """Test removing brackets from both ends."""
         result = StringTokenizer.remove_bookends("[hello]", bookend="[")
         assert result == "[hello]"
+        
+        # Test with matching bookend character
+        result = StringTokenizer.remove_bookends("[hello[", bookend="[")
+        assert result == "hello"
 
     def test_remove_parentheses(self) -> None:
         """Test removing parentheses from both ends."""
         result = StringTokenizer.remove_bookends("(hello)", bookend="(")
         assert result == "(hello)"
+        
+        # Test with matching bookend character
+        result = StringTokenizer.remove_bookends("(hello(", bookend="(")
+        assert result == "hello"
 
     def test_remove_with_spaces(self) -> None:
         """Test removing bookends with spaces."""
@@ -205,6 +213,14 @@ class TestStringTokenizerRemoveBookends:
 
     def test_remove_single_character_bookend(self) -> None:
         """Test removing single character bookend."""
+        result = StringTokenizer.remove_bookends("'a'", bookend="'")
+        assert result == "a"
+        
+        # Test with single character that doesn't match at both ends
+        result = StringTokenizer.remove_bookends("'a", bookend="'")
+        assert result == "'a"
+        
+        # Test with single character that matches at both ends
         result = StringTokenizer.remove_bookends("'a'", bookend="'")
         assert result == "a"
 
@@ -237,11 +253,53 @@ class TestStringTokenizerRemoveBookends:
         """Test removing multi-character bookend."""
         result = StringTokenizer.remove_bookends("[[hello]]", bookend="[[")
         assert result == "[[hello]]"
+        
+        # Test with matching multi-character bookend
+        result = StringTokenizer.remove_bookends("[[hello[[", bookend="[[")
+        assert result == "hello"
 
     def test_remove_with_complex_bookend(self) -> None:
         """Test removing complex bookend pattern."""
         result = StringTokenizer.remove_bookends("STARThelloEND", bookend="START")
         assert result == "STARThelloEND"
+        
+        # Test with matching complex bookend
+        result = StringTokenizer.remove_bookends("STARThelloSTART", bookend="START")
+        assert result == "hello"
+
+    def test_remove_single_bookend_character_logic(self) -> None:
+        """Test that bookend logic uses single character matching at both ends."""
+        # Test with single character bookend that matches at both ends
+        result = StringTokenizer.remove_bookends("***hello***", bookend="*")
+        assert result == "**hello**"
+        
+        # Test with single character bookend that matches at both ends (removes one from each end)
+        result = StringTokenizer.remove_bookends("***hello**", bookend="*")
+        assert result == "**hello*"
+        
+        # Test with single character bookend that matches exactly at both ends
+        result = StringTokenizer.remove_bookends("*hello*", bookend="*")
+        assert result == "hello"
+        
+        # Test with asymmetric brackets - should not be removed
+        result = StringTokenizer.remove_bookends("[hello]", bookend="[")
+        assert result == "[hello]"
+        
+        # Test with asymmetric brackets - should not be removed
+        result = StringTokenizer.remove_bookends("[hello]", bookend="]")
+        assert result == "[hello]"
+        
+        # Test edge case: string with only bookend characters (removes one from each end)
+        result = StringTokenizer.remove_bookends("**", bookend="*")
+        assert result == ""
+        
+        # Test edge case: string with only bookend characters
+        result = StringTokenizer.remove_bookends("***", bookend="*")
+        assert result == "*"
+        
+        # Test edge case: string with only bookend characters
+        result = StringTokenizer.remove_bookends("****", bookend="*")
+        assert result == "**"
 
 
 class TestStringTokenizerEdgeCases:
@@ -261,6 +319,10 @@ class TestStringTokenizerEdgeCases:
         """Test removing bookends with Unicode content."""
         result = StringTokenizer.remove_bookends("«αβγ»", bookend="«")
         assert result == "«αβγ»"
+        
+        # Test with matching Unicode bookend
+        result = StringTokenizer.remove_bookends("«αβγ«", bookend="«")
+        assert result == "αβγ"
 
     def test_parse_with_newlines(self) -> None:
         """Test parsing with newlines in content."""

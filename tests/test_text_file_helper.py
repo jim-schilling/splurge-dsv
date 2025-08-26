@@ -5,6 +5,8 @@ Tests all public methods of the TextFileHelper class including
 line counting, file previewing, reading, and streaming operations.
 """
 
+import os
+import platform
 from pathlib import Path
 
 import pytest
@@ -559,8 +561,6 @@ class TestTextFileHelperEdgeCases:
 
     def test_read_file_with_permission_error(self, tmp_path: Path) -> None:
         """Test reading file with permission error."""
-        import platform
-        
         # Skip this test on Windows as chmod(0o000) doesn't make files unreadable
         if platform.system() == "Windows":
             pytest.skip("File permission test not reliable on Windows")
@@ -569,7 +569,6 @@ class TestTextFileHelperEdgeCases:
         test_file.write_text("content")
         
         # Make file unreadable
-        import os
         os.chmod(test_file, 0o000)
         
         try:
