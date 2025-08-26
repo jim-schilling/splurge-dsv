@@ -9,7 +9,6 @@ This module is licensed under the MIT License.
 """
 
 from os import PathLike
-from collections import deque
 from typing import Iterator
 
 from splurge_dsv.string_tokenizer import StringTokenizer
@@ -204,112 +203,6 @@ class DsvHelper:
         )
 
     @classmethod
-    def _handle_footer_skipping(
-        cls,
-        stream: Iterator[str],
-        *,
-        delimiter: str,
-        strip: bool = DEFAULT_STRIP,
-        bookend: str | None = None,
-        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
-        skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
-        chunk_size: int = DEFAULT_CHUNK_SIZE
-    ) -> Iterator[list[list[str]]]:
-        """
-        Handle streaming with footer row skipping.
-        
-        Args:
-            stream: File stream iterator
-            delimiter: Delimiter to use for parsing
-            strip: Whether to strip whitespace
-            bookend: Bookend character for text fields
-            bookend_strip: Whether to strip whitespace from bookends
-            skip_footer_rows: Number of footer rows to skip
-            chunk_size: Size of chunks to process
-            
-        Yields:
-            list[list[str]]: Chunks of parsed rows
-        """
-        buffer: deque[str] = deque()
-        chunk = []
-        
-        for line in stream:
-            processed_line = line.strip() if strip else line.rstrip("\n")
-            buffer.append(processed_line)
-            
-            if len(buffer) > skip_footer_rows:
-                chunk.append(buffer.popleft())
-                if len(chunk) == chunk_size:
-                    yield cls._process_stream_chunk(
-                        chunk,
-                        delimiter=delimiter,
-                        strip=strip,
-                        bookend=bookend,
-                        bookend_strip=bookend_strip
-                    )
-                    chunk = []
-        
-        # Yield any remaining chunk (excluding footer rows)
-        if chunk:
-            yield cls._process_stream_chunk(
-                chunk,
-                delimiter=delimiter,
-                strip=strip,
-                bookend=bookend,
-                bookend_strip=bookend_strip
-            )
-
-    @classmethod
-    def _handle_simple_streaming(
-        cls,
-        stream: Iterator[str],
-        *,
-        delimiter: str,
-        strip: bool = DEFAULT_STRIP,
-        bookend: str | None = None,
-        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
-        chunk_size: int = DEFAULT_CHUNK_SIZE
-    ) -> Iterator[list[list[str]]]:
-        """
-        Handle simple streaming without footer skipping.
-        
-        Args:
-            stream: File stream iterator
-            delimiter: Delimiter to use for parsing
-            strip: Whether to strip whitespace
-            bookend: Bookend character for text fields
-            bookend_strip: Whether to strip whitespace from bookends
-            chunk_size: Size of chunks to process
-            
-        Yields:
-            list[list[str]]: Chunks of parsed rows
-        """
-        chunk = []
-        
-        for line in stream:
-            processed_line = line.strip() if strip else line.rstrip("\n")
-            chunk.append(processed_line)
-            
-            if len(chunk) == chunk_size:
-                yield cls._process_stream_chunk(
-                    chunk,
-                    delimiter=delimiter,
-                    strip=strip,
-                    bookend=bookend,
-                    bookend_strip=bookend_strip
-                )
-                chunk = []
-        
-        if chunk:
-            yield cls._process_stream_chunk(
-                chunk,
-                delimiter=delimiter,
-                strip=strip,
-                bookend=bookend,
-                bookend_strip=bookend_strip
-            )
-
-    @classmethod
     def parse_stream(
         cls,
         file_path: PathLike[str] | str,
@@ -349,38 +242,22 @@ class DsvHelper:
         if delimiter is None or delimiter == "":
             raise SplurgeParameterError("delimiter cannot be empty or None")
 
-        if chunk_size < cls.DEFAULT_MIN_CHUNK_SIZE:
-            chunk_size = cls.DEFAULT_MIN_CHUNK_SIZE
-        
-        if skip_header_rows < cls.DEFAULT_SKIP_HEADER_ROWS:
-            skip_header_rows = cls.DEFAULT_SKIP_HEADER_ROWS
-        
-        if skip_footer_rows < cls.DEFAULT_SKIP_FOOTER_ROWS:
-            skip_footer_rows = cls.DEFAULT_SKIP_FOOTER_ROWS
+        chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
-        with open(file_path, "r", encoding=encoding) as stream:
-            # Skip header rows
-            for _ in range(skip_header_rows):
-                if not stream.readline():
-                    return
-
-            # Choose appropriate streaming method based on footer skipping
-            if skip_footer_rows > 0:
-                yield from cls._handle_footer_skipping(
-                    stream,
-                    delimiter=delimiter,
-                    strip=strip,
-                    bookend=bookend,
-                    bookend_strip=bookend_strip,
-                    skip_footer_rows=skip_footer_rows,
-                    chunk_size=chunk_size
-                )
-            else:
-                yield from cls._handle_simple_streaming(
-                    stream,
-                    delimiter=delimiter,
-                    strip=strip,
-                    bookend=bookend,
-                    bookend_strip=bookend_strip,
-                    chunk_size=chunk_size
-                )   
+        # Use TextFileHelper.read_as_stream for consistent error handling
+        for chunk in TextFileHelper.read_as_stream(
+            file_path,
+            encoding=encoding,
+            skip_header_rows=skip_header_rows,
+            skip_footer_rows=skip_footer_rows,
+            chunk_size=chunk_size
+        ):
+            yield cls._process_stream_chunk(
+                chunk,
+                delimiter=delimiter,
+                strip=strip,
+                bookend=bookend,
+                bookend_strip=bookend_strip
+            )   

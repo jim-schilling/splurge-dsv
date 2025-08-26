@@ -125,7 +125,7 @@ class TextFileHelper:
                 "TextFileHelper.preview: max_lines is less than 1",
                 details="max_lines must be at least 1"
             )
-        
+               
         # Validate file path
         validated_path = PathValidator.validate_path(
             Path(file_path),
@@ -134,7 +134,7 @@ class TextFileHelper:
             must_be_readable=True
         )
         
-        skip_header_rows = max(0, skip_header_rows)
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         lines: list[str] = []
         
         with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
@@ -189,8 +189,9 @@ class TextFileHelper:
             SplurgePathValidationError: If file path validation fails
         """
         # Ensure minimum chunk size
-        if chunk_size < cls.DEFAULT_MIN_CHUNK_SIZE:
-            chunk_size = cls.DEFAULT_MIN_CHUNK_SIZE
+        chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
         
         # Validate file path
         validated_path = PathValidator.validate_path(
@@ -200,8 +201,8 @@ class TextFileHelper:
             must_be_readable=True
         )
         
-        skip_header_rows = max(0, skip_header_rows)
-        skip_footer_rows = max(0, skip_footer_rows)
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
         
         with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
             # Skip header rows
@@ -212,7 +213,7 @@ class TextFileHelper:
             # Use a sliding window to handle footer skipping efficiently
             if skip_footer_rows > 0:
                 # Buffer to hold the last skip_footer_rows lines
-                buffer: deque[str] = deque(maxlen=skip_footer_rows)
+                buffer: deque[str] = deque(maxlen=skip_footer_rows + 1)
                 current_chunk: list[str] = []
                 
                 for line in stream:
@@ -222,11 +223,11 @@ class TextFileHelper:
                     buffer.append(processed_line)
                     
                     # If buffer is not yet full, we're still building the initial buffer
-                    if len(buffer) < skip_footer_rows:
+                    if len(buffer) < skip_footer_rows + 1:
                         continue
                     
-                    # Buffer is full, so the oldest line (popleft) is safe to process
-                    # (it's not part of the footer we want to skip)
+                    # Buffer has more than skip_footer_rows lines, so the oldest line (popleft) 
+                    # is safe to process (it's not part of the footer we want to skip)
                     safe_line = buffer.popleft()
                     current_chunk.append(safe_line)
                     
@@ -297,15 +298,9 @@ class TextFileHelper:
             must_be_file=True,
             must_be_readable=True
         )
-        
-        if skip_header_rows < cls.DEFAULT_SKIP_HEADER_ROWS:
-            skip_header_rows = cls.DEFAULT_SKIP_HEADER_ROWS
-        
-        if skip_footer_rows < cls.DEFAULT_SKIP_FOOTER_ROWS:
-            skip_footer_rows = cls.DEFAULT_SKIP_FOOTER_ROWS
-        
-        skip_header_rows = max(0, skip_header_rows)
-        skip_footer_rows = max(0, skip_footer_rows)
+                      
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
         
         with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
             for _ in range(skip_header_rows):

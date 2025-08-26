@@ -409,7 +409,7 @@ class TestDsvHelperParseStream:
         """Test that streaming non-existent file raises error."""
         test_file = tmp_path / "nonexistent.csv"
         
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(SplurgeFileNotFoundError):
             list(DsvHelper.parse_stream(test_file, delimiter=","))
 
     def test_parse_stream_with_empty_delimiter_raises_error(self, tmp_path: Path) -> None:
@@ -515,7 +515,7 @@ class TestDsvHelperEdgeCases:
         os.chmod(test_file, 0o000)
         
         try:
-            with pytest.raises(PermissionError):
+            with pytest.raises(SplurgeFilePermissionError):
                 DsvHelper.parse_file(test_file, delimiter=",")
         finally:
             # Restore permissions
