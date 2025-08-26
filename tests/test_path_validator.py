@@ -180,7 +180,7 @@ class TestPathValidatorValidatePath:
             "file:name.txt",
             ":file.txt",
             "file.txt:",
-            "C:file.txt",  # Missing slash
+            "C:file.txt",  # Drive-relative path is valid on Windows but rejected by this validator
             "file:C.txt"
         ]
         
@@ -341,7 +341,7 @@ class TestPathValidatorIsSafePath:
             "file:name.txt",
             ":file.txt",
             "file.txt:",
-            "C:file.txt"
+            "C:file.txt"  # Drive-relative path is valid on Windows but rejected by this validator
         ]
         
         for path in invalid_paths:
@@ -381,6 +381,8 @@ class TestPathValidatorEdgeCases:
         
         result = PathValidator.validate_path(spaced_file, must_exist=True)
         assert result == spaced_file.resolve()
+
+
 
     def test_sanitize_filename_with_unicode(self) -> None:
         """Test sanitizing filename with Unicode characters."""
