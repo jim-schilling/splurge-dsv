@@ -26,7 +26,6 @@ from splurge_dsv.exceptions import (
 from splurge_dsv.path_validator import PathValidator
  
 
-
 # Module-level constants for resource management
 DEFAULT_BUFFERING = -1  # Default buffering for file operations
 DEFAULT_ENCODING = "utf-8"  # Default text encoding
