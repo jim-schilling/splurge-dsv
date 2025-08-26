@@ -33,6 +33,78 @@ DEFAULT_ENCODING = "utf-8"  # Default text encoding
 DEFAULT_MODE = "r"  # Default file mode for reading
 
 
+def _safe_open_file(
+    file_path: Path,
+    *,
+    mode: str,
+    encoding: str | None = None,
+    errors: str | None = None,
+    newline: str | None = None,
+    buffering: int = DEFAULT_BUFFERING
+) -> IO[Any]:
+    """
+    Safely open a file with proper error handling.
+    
+    This function provides centralized file opening with consistent error handling
+    that converts standard file operation exceptions to custom exceptions.
+    
+    Args:
+        file_path: Path to the file
+        mode: File open mode
+        encoding: Text encoding (for text mode)
+        errors: Error handling for encoding
+        newline: Newline handling
+        buffering: Buffer size
+        
+    Returns:
+        File handle
+        
+    Raises:
+        SplurgeFileNotFoundError: If file is not found
+        SplurgeFilePermissionError: If permission is denied
+        SplurgeFileEncodingError: If encoding error occurs
+        SplurgeResourceAcquisitionError: If other file operation fails
+    """
+    try:
+        if 'b' in mode:
+            # Binary mode
+            return open(
+                file_path,
+                mode=mode,
+                buffering=buffering
+            )
+        else:
+            # Text mode
+            return open(
+                file_path,
+                mode=mode,
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+                buffering=buffering
+            )
+    except FileNotFoundError as e:
+        raise SplurgeFileNotFoundError(
+            f"File not found: {file_path}",
+            details=str(e)
+        )
+    except PermissionError as e:
+        raise SplurgeFilePermissionError(
+            f"Permission denied: {file_path}",
+            details=str(e)
+        )
+    except UnicodeDecodeError as e:
+        raise SplurgeFileEncodingError(
+            f"Encoding error reading file: {file_path}",
+            details=str(e)
+        )
+    except OSError as e:
+        raise SplurgeResourceAcquisitionError(
+            f"Failed to open file: {file_path}",
+            details=str(e)
+        )
+
+
 class ResourceManager:
     """
     Generic resource manager that implements the ResourceManagerProtocol.
@@ -181,47 +253,20 @@ class FileResourceManager:
             File handle
             
         Raises:
-            SplurgeResourceAcquisitionError: If file cannot be opened
+            SplurgeFileNotFoundError: If file is not found
+            SplurgeFilePermissionError: If permission is denied
+            SplurgeFileEncodingError: If encoding error occurs
+            SplurgeResourceAcquisitionError: If other file operation fails
         """
-        try:
-            if 'b' in self.mode:
-                # Binary mode
-                self._file_handle = open(
-                    self.file_path,
-                    mode=self.mode,
-                    buffering=self.buffering
-                )
-            else:
-                # Text mode
-                self._file_handle = open(
-                    self.file_path,
-                    mode=self.mode,
-                    encoding=self.encoding,
-                    errors=self.errors,
-                    newline=self.newline,
-                    buffering=self.buffering
-                )
-            return self._file_handle
-        except FileNotFoundError as e:
-            raise SplurgeFileNotFoundError(
-                f"File not found: {self.file_path}",
-                details=str(e)
-            )
-        except PermissionError as e:
-            raise SplurgeFilePermissionError(
-                f"Permission denied: {self.file_path}",
-                details=str(e)
-            )
-        except UnicodeDecodeError as e:
-            raise SplurgeFileEncodingError(
-                f"Encoding error reading file: {self.file_path}",
-                details=str(e)
-            )
-        except OSError as e:
-            raise SplurgeResourceAcquisitionError(
-                f"Failed to open file: {self.file_path}",
-                details=str(e)
-            )
+        self._file_handle = _safe_open_file(
+            self.file_path,
+            mode=self.mode,
+            encoding=self.encoding,
+            errors=self.errors,
+            newline=self.newline,
+            buffering=self.buffering
+        )
+        return self._file_handle
     
     def __exit__(
         self,
@@ -305,12 +350,14 @@ class StreamResourceManager:
         if self.auto_close and hasattr(self.stream, 'close'):
             try:
                 self.stream.close()
-                self._is_closed = True
             except Exception as e:
                 raise SplurgeResourceReleaseError(
                     "Failed to close stream",
                     details=str(e)
                 )
+        
+        # Mark as closed after context manager exits, regardless of close method
+        self._is_closed = True
     
     @property
     def is_closed(self) -> bool:
@@ -359,9 +406,6 @@ def safe_file_operation(
         yield file_handle
 
 
-
-
-
 @contextmanager
 def safe_stream_operation(
     stream: Iterator[Any],
@@ -384,66 +428,3 @@ def safe_stream_operation(
     manager = StreamResourceManager(stream, auto_close=auto_close)
     with manager as stream_handle:
         yield stream_handle
-
-
-def _handle_file_error(
-    error: Exception,
-    file_path: Path,
-    operation: str
-) -> None:
-    """
-    Handle file operation errors with consistent error mapping.
-    
-    Args:
-        error: The original exception
-        file_path: Path to the file that caused the error
-        operation: Description of the operation that failed
-        
-    Raises:
-        SplurgeFileNotFoundError: If file not found
-        SplurgeFilePermissionError: If permission denied
-        SplurgeFileEncodingError: If encoding error
-        SplurgeResourceAcquisitionError: For other file errors
-    """
-    if isinstance(error, FileNotFoundError):
-        raise SplurgeFileNotFoundError(
-            f"File not found during {operation}: {file_path}",
-            details=str(error)
-        )
-    elif isinstance(error, PermissionError):
-        raise SplurgeFilePermissionError(
-            f"Permission denied during {operation}: {file_path}",
-            details=str(error)
-        )
-    elif isinstance(error, UnicodeDecodeError):
-        raise SplurgeFileEncodingError(
-            f"Encoding error during {operation}: {file_path}",
-            details=str(error)
-        )
-    else:
-        raise SplurgeResourceAcquisitionError(
-            f"Failed to {operation} file: {file_path}",
-            details=str(error)
-        )
-
-
-def _handle_resource_cleanup_error(
-    error: Exception,
-    resource_name: str,
-    operation: str
-) -> None:
-    """
-    Handle resource cleanup errors with consistent error mapping.
-    
-    Args:
-        error: The original exception
-        resource_name: Name or path of the resource
-        operation: Description of the cleanup operation that failed
-        
-    Raises:
-        SplurgeResourceReleaseError: For resource cleanup errors
-    """
-    raise SplurgeResourceReleaseError(
-        f"Failed to {operation} {resource_name}",
-        details=str(error)
-    )

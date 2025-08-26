@@ -201,9 +201,6 @@ class TestFileResourceManager:
             FileResourceManager(test_dir, mode="r")
 
 
-
-
-
 class TestStreamResourceManager:
     """Test the StreamResourceManager class."""
 
@@ -270,10 +267,15 @@ class TestStreamResourceManager:
     def test_context_manager_with_non_closeable_stream(self) -> None:
         """Test context manager with non-closeable stream."""
         stream = iter([1, 2, 3])
-        with StreamResourceManager(stream) as managed_stream:
+        manager = StreamResourceManager(stream)
+        assert not manager.is_closed
+        
+        with manager as managed_stream:
             items = list(managed_stream)
             assert items == [1, 2, 3]
-        # Should not raise any errors
+        
+        # Should be marked as closed after context manager exits
+        assert manager.is_closed
 
     def test_is_closed_property(self) -> None:
         """Test is_closed property."""
@@ -337,9 +339,6 @@ class TestSafeFileOperation:
                 pass
 
 
-
-
-
 class TestSafeStreamOperation:
     """Test the safe_stream_operation context manager."""
 
@@ -389,6 +388,51 @@ class TestSafeStreamOperation:
         assert not stream.closed
 
 
+class TestSafeOpenFile:
+    """Test the _safe_open_file helper function."""
+
+    def test_safe_open_file_text_mode(self, tmp_path: Path) -> None:
+        """Test safe file opening in text mode."""
+        from splurge_dsv.resource_manager import _safe_open_file
+        
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test content")
+        
+        with _safe_open_file(test_file, mode="r", encoding="utf-8") as file_handle:
+            content = file_handle.read()
+            assert content == "test content"
+
+    def test_safe_open_file_binary_mode(self, tmp_path: Path) -> None:
+        """Test safe file opening in binary mode."""
+        from splurge_dsv.resource_manager import _safe_open_file
+        
+        test_file = tmp_path / "test.bin"
+        test_file.write_bytes(b"binary content")
+        
+        with _safe_open_file(test_file, mode="rb") as file_handle:
+            content = file_handle.read()
+            assert content == b"binary content"
+
+    def test_safe_open_file_nonexistent_raises_error(self, tmp_path: Path) -> None:
+        """Test that non-existent file raises SplurgeFileNotFoundError."""
+        from splurge_dsv.resource_manager import _safe_open_file
+        
+        test_file = tmp_path / "nonexistent.txt"
+        
+        with pytest.raises(SplurgeFileNotFoundError):
+            with _safe_open_file(test_file, mode="r"):
+                pass
+
+    def test_safe_open_file_invalid_path_raises_error(self) -> None:
+        """Test that invalid path raises SplurgeResourceAcquisitionError."""
+        from splurge_dsv.resource_manager import _safe_open_file
+        
+        # Invalid characters in filename cause OSError which gets converted to SplurgeResourceAcquisitionError
+        with pytest.raises(SplurgeResourceAcquisitionError):
+            with _safe_open_file(Path("file<with>invalid:chars?.txt"), mode="r"):
+                pass
+
+
 class TestResourceManagerEdgeCases:
     """Test edge cases and boundary conditions."""
 
@@ -409,8 +453,6 @@ class TestResourceManagerEdgeCases:
         with FileResourceManager(spaced_file) as file_handle:
             content = file_handle.read()
             assert content == "content with spaces"
-
-
 
     def test_stream_resource_manager_with_empty_stream(self) -> None:
         """Test stream resource manager with empty stream."""
@@ -439,8 +481,6 @@ class TestResourceManagerEdgeCases:
                 content1 = file1.read()
                 content2 = file2.read()
                 assert content1 == content2 == "original content"
-
-
 
     def test_file_resource_manager_error_handling(self, tmp_path: Path) -> None:
         """Test file resource manager error handling."""
