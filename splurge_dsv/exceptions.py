@@ -11,8 +11,6 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
-# No typing imports needed
-
 
 class SplurgeDsvError(Exception):
     """Base exception for all splurge-dsv errors."""

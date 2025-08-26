@@ -199,10 +199,7 @@ class TextFileHelper:
             must_exist=True,
             must_be_file=True,
             must_be_readable=True
-        )
-        
-        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
-        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+        )               
         
         with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
             # Skip header rows
@@ -222,12 +219,13 @@ class TextFileHelper:
                     # Add current line to buffer
                     buffer.append(processed_line)
                     
-                    # If buffer is not yet full, we're still building the initial buffer
+                    # Wait until the buffer is full (skip_footer_rows + 1 lines) before processing lines.
+                    # This ensures we have enough lines to reliably identify and skip the footer rows at the end.
                     if len(buffer) < skip_footer_rows + 1:
                         continue
                     
-                    # Buffer has more than skip_footer_rows lines, so the oldest line (popleft) 
-                    # is safe to process (it's not part of the footer we want to skip)
+                    # Once the buffer contains more than skip_footer_rows lines, the oldest line (removed with popleft)
+                    # is guaranteed not to be part of the footer and can be safely processed and added to the current chunk.
                     safe_line = buffer.popleft()
                     current_chunk.append(safe_line)
                     
