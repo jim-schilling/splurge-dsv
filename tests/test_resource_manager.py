@@ -12,7 +12,6 @@ import pytest
 
 from splurge_dsv.exceptions import (
     SplurgeResourceAcquisitionError,
-    SplurgeResourceReleaseError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
     SplurgeFileEncodingError,

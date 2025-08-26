@@ -5,7 +5,6 @@ Tests all public methods of the DsvHelper class including
 parsing, file operations, and streaming functionality.
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest

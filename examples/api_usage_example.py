@@ -14,10 +14,8 @@ Copyright (c) 2025 Jim Schilling
 This example is licensed under the MIT License.
 """
 
-import os
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any
 
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.text_file_helper import TextFileHelper
@@ -32,10 +30,6 @@ from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.exceptions import (
     SplurgePathValidationError,
     SplurgeFileNotFoundError,
-    SplurgeFilePermissionError,
-    SplurgeFileEncodingError,
-    SplurgeResourceAcquisitionError,
-    SplurgeResourceReleaseError,
     SplurgeParameterError
 )
 

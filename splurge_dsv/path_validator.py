@@ -14,7 +14,6 @@ This module is licensed under the MIT License.
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from splurge_dsv.exceptions import (
     SplurgePathValidationError,

@@ -5,7 +5,6 @@ Tests all public methods of the TextFileHelper class including
 line counting, file previewing, reading, and streaming operations.
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -14,8 +13,7 @@ from splurge_dsv.exceptions import (
     SplurgeParameterError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
-    SplurgeFileEncodingError,
-    SplurgePathValidationError
+    SplurgeFileEncodingError
 )
 from splurge_dsv.text_file_helper import TextFileHelper
 

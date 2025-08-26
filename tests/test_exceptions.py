@@ -5,7 +5,6 @@ Tests all custom exception classes and their behavior including
 message handling, details, and inheritance hierarchy.
 """
 
-import pytest
 
 from splurge_dsv.exceptions import (
     SplurgeDsvError,
