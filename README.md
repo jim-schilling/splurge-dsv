@@ -214,6 +214,27 @@ The project follows strict coding standards:
 
 ## Changelog
 
+### 2025.1.1 (2025-01-XX)
+
+#### 🔧 Code Quality Improvements
+- **Refactored Complex Regex Logic**: Extracted Windows drive letter validation logic from `_check_dangerous_characters` into a dedicated `_is_valid_windows_drive_pattern` helper method in `PathValidator` for better readability and maintainability
+- **Exception Handling Consistency**: Fixed inconsistency in `ResourceManager.acquire()` method to properly re-raise `NotImplementedError` without wrapping it in `SplurgeResourceAcquisitionError`
+- **Import Organization**: Moved all imports to the top of modules across the entire codebase for better code structure and PEP 8 compliance
+
+#### 🧪 Testing Enhancements
+- **Public API Focus**: Removed all tests that validated private implementation details, focusing exclusively on public API behavior validation
+- **Comprehensive Resource Manager Tests**: Added extensive test suite for `ResourceManager` module covering all public methods, edge cases, error scenarios, and context manager behavior
+- **Bookend Logic Clarification**: Updated and corrected all tests related to `StringTokenizer.remove_bookends` to properly reflect its single-character, symmetric bookend matching behavior
+- **Path Validation Test Clarity**: Clarified test expectations and comments for Windows drive-relative paths (e.g., "C:file.txt") to reflect the validator's intentionally strict security design
+
+#### 🐛 Bug Fixes
+- **Test Reliability**: Fixed failing tests in `ResourceManager` context manager scenarios by properly handling file truncation and line ending normalization
+- **Ruff Compliance**: Resolved all linting warnings including unused variables and imports
+
+#### 📚 Documentation Updates
+- **Method Documentation**: Updated `ResourceManager.acquire()` docstring to include `NotImplementedError` in the Raises section
+- **Test Comments**: Enhanced test documentation with clearer explanations of expected behaviors and edge cases
+
 ### 2025.1.0 (2025-08-25)
 
 #### 🎉 Major Features
