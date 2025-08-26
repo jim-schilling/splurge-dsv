@@ -6,6 +6,7 @@ path validation, security checks, and filename sanitization.
 """
 
 import os
+import platform
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -61,7 +62,6 @@ class TestPathValidatorValidatePath:
     def test_validate_relative_path_allowed(self, tmp_path: Path) -> None:
         """Test validating relative path when allowed."""
         # Skip this test on Windows due to temp directory cleanup issues
-        import platform
         if platform.system() == "Windows":
             pytest.skip("Relative path test not reliable on Windows")
         
@@ -180,7 +180,7 @@ class TestPathValidatorValidatePath:
             "file:name.txt",
             ":file.txt",
             "file.txt:",
-            "C:file.txt",  # Missing slash
+            "C:file.txt",  # Drive-relative path is valid on Windows but rejected by this validator
             "file:C.txt"
         ]
         
@@ -190,8 +190,6 @@ class TestPathValidatorValidatePath:
 
     def test_validate_unreadable_file_raises_error(self, tmp_path: Path) -> None:
         """Test that unreadable file raises error."""
-        import platform
-        
         # Skip this test on Windows as chmod(0o000) doesn't make files unreadable
         if platform.system() == "Windows":
             pytest.skip("File permission test not reliable on Windows")
@@ -343,7 +341,7 @@ class TestPathValidatorIsSafePath:
             "file:name.txt",
             ":file.txt",
             "file.txt:",
-            "C:file.txt"
+            "C:file.txt"  # Drive-relative path is valid on Windows but rejected by this validator
         ]
         
         for path in invalid_paths:
@@ -355,8 +353,6 @@ class TestPathValidatorEdgeCases:
 
     def test_validate_path_with_symlinks(self, tmp_path: Path) -> None:
         """Test validating path with symlinks."""
-        import platform
-        
         # Skip this test on Windows as symlink creation requires elevated privileges
         if platform.system() == "Windows":
             pytest.skip("Symlink test requires elevated privileges on Windows")
@@ -385,6 +381,8 @@ class TestPathValidatorEdgeCases:
         
         result = PathValidator.validate_path(spaced_file, must_exist=True)
         assert result == spaced_file.resolve()
+
+
 
     def test_sanitize_filename_with_unicode(self) -> None:
         """Test sanitizing filename with Unicode characters."""

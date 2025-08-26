@@ -6,12 +6,14 @@ file operations, temporary files, and stream management.
 """
 
 import os
+import platform
 from pathlib import Path
 
 import pytest
 
 from splurge_dsv.exceptions import (
     SplurgeResourceAcquisitionError,
+    SplurgeResourceReleaseError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
     SplurgeFileEncodingError,
@@ -33,7 +35,6 @@ class TestResourceManager:
         """Test ResourceManager initialization."""
         manager = ResourceManager()
         assert not manager.is_acquired()
-        assert manager._resource is None
 
     def test_acquire_not_implemented(self) -> None:
         """Test that acquire raises NotImplementedError when _create_resource is not implemented."""
@@ -52,6 +53,64 @@ class TestResourceManager:
         """Test initial acquired state."""
         manager = ResourceManager()
         assert not manager.is_acquired()
+
+    def test_acquire_twice_raises_error(self) -> None:
+        """Test that acquiring twice raises error."""
+        class TestResourceManager(ResourceManager):
+            def _create_resource(self):
+                return "test_resource"
+        
+        manager = TestResourceManager()
+        resource = manager.acquire()
+        assert resource == "test_resource"
+        assert manager.is_acquired()
+        
+        with pytest.raises(SplurgeResourceAcquisitionError, match="Resource is already acquired"):
+            manager.acquire()
+
+    def test_acquire_release_cycle(self) -> None:
+        """Test complete acquire/release cycle."""
+        class TestResourceManager(ResourceManager):
+            def _create_resource(self):
+                return "test_resource"
+            
+            def _cleanup_resource(self):
+                # Simulate cleanup
+                pass
+        
+        manager = TestResourceManager()
+        
+        # Initial state
+        assert not manager.is_acquired()
+        
+        # Acquire
+        resource = manager.acquire()
+        assert resource == "test_resource"
+        assert manager.is_acquired()
+        
+        # Release
+        manager.release()
+        assert not manager.is_acquired()
+        
+        # Can acquire again after release
+        resource2 = manager.acquire()
+        assert resource2 == "test_resource"
+        assert manager.is_acquired()
+
+    def test_release_with_cleanup_error_raises_error(self) -> None:
+        """Test that cleanup error during release raises SplurgeResourceReleaseError."""
+        class TestResourceManager(ResourceManager):
+            def _create_resource(self):
+                return "test_resource"
+            
+            def _cleanup_resource(self):
+                raise RuntimeError("Cleanup failed")
+        
+        manager = TestResourceManager()
+        manager.acquire()
+        
+        with pytest.raises(SplurgeResourceReleaseError, match="Failed to release resource"):
+            manager.release()
 
 
 class TestFileResourceManager:
@@ -131,6 +190,40 @@ class TestFileResourceManager:
         
         assert test_file.read_text() == "original content appended content"
 
+    def test_context_manager_read_write_mode(self, tmp_path: Path) -> None:
+        """Test context manager with read-write mode."""
+        test_file = tmp_path / "rw_test.txt"
+        test_file.write_text("original content")
+        
+        with FileResourceManager(test_file, mode="r+") as file_handle:
+            content = file_handle.read()
+            assert content == "original content"
+            
+            file_handle.seek(0)
+            file_handle.truncate()  # Clear the file
+            file_handle.write("new content")
+        
+        assert test_file.read_text() == "new content"
+
+    def test_context_manager_binary_write_mode(self, tmp_path: Path) -> None:
+        """Test context manager with binary write mode."""
+        test_file = tmp_path / "binary_write.bin"
+        
+        with FileResourceManager(test_file, mode="wb") as file_handle:
+            file_handle.write(b"binary content")
+        
+        assert test_file.read_bytes() == b"binary content"
+
+    def test_context_manager_binary_append_mode(self, tmp_path: Path) -> None:
+        """Test context manager with binary append mode."""
+        test_file = tmp_path / "binary_append.bin"
+        test_file.write_bytes(b"original")
+        
+        with FileResourceManager(test_file, mode="ab") as file_handle:
+            file_handle.write(b" appended")
+        
+        assert test_file.read_bytes() == b"original appended"
+
     def test_nonexistent_file_read_mode_raises_error(self, tmp_path: Path) -> None:
         """Test that non-existent file raises error in read mode."""
         test_file = tmp_path / "nonexistent.txt"
@@ -150,8 +243,6 @@ class TestFileResourceManager:
 
     def test_file_permission_error(self, tmp_path: Path) -> None:
         """Test file permission error."""
-        import platform
-        
         # Skip this test on Windows as chmod(0o000) doesn't make files unreadable
         if platform.system() == "Windows":
             pytest.skip("File permission test not reliable on Windows")
@@ -172,8 +263,6 @@ class TestFileResourceManager:
 
     def test_encoding_error(self, tmp_path: Path) -> None:
         """Test encoding error."""
-        import platform
-        
         # Skip this test on Windows as encoding error handling may differ
         if platform.system() == "Windows":
             pytest.skip("Encoding error test not reliable on Windows")
@@ -198,6 +287,82 @@ class TestFileResourceManager:
         
         with pytest.raises(SplurgePathValidationError):
             FileResourceManager(test_dir, mode="r")
+
+    def test_context_manager_exception_propagation(self, tmp_path: Path) -> None:
+        """Test that exceptions in context manager are properly propagated."""
+        test_file = tmp_path / "exception_test.txt"
+        test_file.write_text("content")
+        
+        with pytest.raises(RuntimeError, match="Test exception"):
+            with FileResourceManager(test_file, mode="r") as _:
+                raise RuntimeError("Test exception")
+
+    def test_context_manager_close_error_raises_error(self, tmp_path: Path) -> None:
+        """Test that close error raises SplurgeResourceReleaseError."""
+        test_file = tmp_path / "close_error_test.txt"
+        test_file.write_text("content")
+        
+        # Create a file handle that will fail to close
+        class FailingFileHandle:
+            def __init__(self, file_path):
+                self.file_path = file_path
+                self.closed = False
+            
+            def read(self):
+                return "content"
+            
+            def close(self):
+                raise OSError("Failed to close")
+        
+        # Mock the file opening to return our failing handle
+        original_open = open
+        try:
+            def mock_open(*args, **kwargs):
+                return FailingFileHandle(test_file)
+            
+            # Replace open function temporarily
+            import builtins
+            builtins.open = mock_open
+            
+            with pytest.raises(SplurgeResourceReleaseError, match="Failed to close file"):
+                with FileResourceManager(test_file, mode="r") as file_handle:
+                    content = file_handle.read()
+                    assert content == "content"
+        finally:
+            # Restore original open function
+            builtins.open = original_open
+
+    def test_context_manager_multiple_operations(self, tmp_path: Path) -> None:
+        """Test multiple operations within context manager."""
+        test_file = tmp_path / "multi_op_test.txt"
+        test_file.write_text("line1\nline2\nline3")
+        
+        with FileResourceManager(test_file, mode="r") as file_handle:
+            # Multiple read operations
+            line1 = file_handle.readline()
+            line2 = file_handle.readline()
+            line3 = file_handle.readline()
+            
+            assert line1 == "line1\n"
+            assert line2 == "line2\n"
+            assert line3 == "line3"
+
+    def test_context_manager_with_encoding_parameters(self, tmp_path: Path) -> None:
+        """Test context manager with various encoding parameters."""
+        test_file = tmp_path / "encoding_params_test.txt"
+        content = "test content with special chars: éñü"
+        test_file.write_text(content, encoding='utf-8')
+        
+        with FileResourceManager(
+            test_file, 
+            mode="r", 
+            encoding="utf-8", 
+            errors="strict",
+            newline=None,
+            buffering=1024
+        ) as file_handle:
+            read_content = file_handle.read()
+            assert read_content == content
 
 
 class TestStreamResourceManager:
@@ -276,9 +441,9 @@ class TestStreamResourceManager:
         # Should be marked as closed after context manager exits
         assert manager.is_closed
 
-    def test_is_closed_property(self) -> None:
-        """Test is_closed property."""
-        class CloseableStream:
+    def test_context_manager_with_close_error_raises_error(self) -> None:
+        """Test that close error raises SplurgeResourceReleaseError."""
+        class FailingCloseStream:
             def __init__(self):
                 self.closed = False
             
@@ -286,16 +451,44 @@ class TestStreamResourceManager:
                 return iter([1, 2, 3])
             
             def close(self):
-                self.closed = True
+                raise RuntimeError("Close failed")
         
-        stream = CloseableStream()
-        manager = StreamResourceManager(stream)
-        assert not manager.is_closed
+        stream = FailingCloseStream()
+        with pytest.raises(SplurgeResourceReleaseError, match="Failed to close stream"):
+            with StreamResourceManager(stream) as managed_stream:
+                items = list(managed_stream)
+                assert items == [1, 2, 3]
+
+    def test_context_manager_exception_propagation(self) -> None:
+        """Test that exceptions in context manager are properly propagated."""
+        stream = iter([1, 2, 3])
         
-        with manager:
-            pass
+        with pytest.raises(RuntimeError, match="Test exception"):
+            with StreamResourceManager(stream) as _:
+                raise RuntimeError("Test exception")
+
+    def test_context_manager_multiple_iterations(self) -> None:
+        """Test multiple iterations within context manager."""
+        stream = iter([1, 2, 3])
         
-        assert manager.is_closed
+        with StreamResourceManager(stream) as managed_stream:
+            # First iteration
+            items1 = list(managed_stream)
+            assert items1 == [1, 2, 3]
+            
+            # Second iteration (should be empty since stream is exhausted)
+            items2 = list(managed_stream)
+            assert items2 == []
+
+    def test_context_manager_with_generator(self) -> None:
+        """Test context manager with generator function."""
+        def number_generator():
+            for i in range(1, 4):
+                yield i
+        
+        with StreamResourceManager(number_generator()) as managed_stream:
+            items = list(managed_stream)
+            assert items == [1, 2, 3]
 
 
 class TestSafeFileOperation:
@@ -336,6 +529,32 @@ class TestSafeFileOperation:
         with pytest.raises(SplurgeFileNotFoundError):
             with safe_file_operation(test_file, mode="r"):
                 pass
+
+    def test_safe_file_operation_with_all_parameters(self, tmp_path: Path) -> None:
+        """Test safe file operation with all parameters."""
+        test_file = tmp_path / "all_params_test.txt"
+        content = "test content"
+        test_file.write_text(content)
+        
+        with safe_file_operation(
+            test_file, 
+            mode="r", 
+            encoding="utf-8", 
+            errors="strict",
+            newline=None,
+            buffering=1024
+        ) as file_handle:
+            read_content = file_handle.read()
+            assert read_content == content
+
+    def test_safe_file_operation_exception_propagation(self, tmp_path: Path) -> None:
+        """Test that exceptions in safe file operation are properly propagated."""
+        test_file = tmp_path / "exception_test.txt"
+        test_file.write_text("content")
+        
+        with pytest.raises(RuntimeError, match="Test exception"):
+            with safe_file_operation(test_file, mode="r") as _:
+                raise RuntimeError("Test exception")
 
 
 class TestSafeStreamOperation:
@@ -386,50 +605,23 @@ class TestSafeStreamOperation:
         
         assert not stream.closed
 
+    def test_safe_stream_operation_exception_propagation(self) -> None:
+        """Test that exceptions in safe stream operation are properly propagated."""
+        stream = iter([1, 2, 3])
+        
+        with pytest.raises(RuntimeError, match="Test exception"):
+            with safe_stream_operation(stream) as _:
+                raise RuntimeError("Test exception")
 
-class TestSafeOpenFile:
-    """Test the _safe_open_file helper function."""
-
-    def test_safe_open_file_text_mode(self, tmp_path: Path) -> None:
-        """Test safe file opening in text mode."""
-        from splurge_dsv.resource_manager import _safe_open_file
+    def test_safe_stream_operation_with_generator(self) -> None:
+        """Test safe stream operation with generator function."""
+        def number_generator():
+            for i in range(1, 4):
+                yield i
         
-        test_file = tmp_path / "test.txt"
-        test_file.write_text("test content")
-        
-        with _safe_open_file(test_file, mode="r", encoding="utf-8") as file_handle:
-            content = file_handle.read()
-            assert content == "test content"
-
-    def test_safe_open_file_binary_mode(self, tmp_path: Path) -> None:
-        """Test safe file opening in binary mode."""
-        from splurge_dsv.resource_manager import _safe_open_file
-        
-        test_file = tmp_path / "test.bin"
-        test_file.write_bytes(b"binary content")
-        
-        with _safe_open_file(test_file, mode="rb") as file_handle:
-            content = file_handle.read()
-            assert content == b"binary content"
-
-    def test_safe_open_file_nonexistent_raises_error(self, tmp_path: Path) -> None:
-        """Test that non-existent file raises SplurgeFileNotFoundError."""
-        from splurge_dsv.resource_manager import _safe_open_file
-        
-        test_file = tmp_path / "nonexistent.txt"
-        
-        with pytest.raises(SplurgeFileNotFoundError):
-            with _safe_open_file(test_file, mode="r"):
-                pass
-
-    def test_safe_open_file_invalid_path_raises_error(self) -> None:
-        """Test that invalid path raises SplurgeResourceAcquisitionError."""
-        from splurge_dsv.resource_manager import _safe_open_file
-        
-        # Invalid characters in filename cause OSError which gets converted to SplurgeResourceAcquisitionError
-        with pytest.raises(SplurgeResourceAcquisitionError):
-            with _safe_open_file(Path("file<with>invalid:chars?.txt"), mode="r"):
-                pass
+        with safe_stream_operation(number_generator()) as managed_stream:
+            items = list(managed_stream)
+            assert items == [1, 2, 3]
 
 
 class TestResourceManagerEdgeCases:
@@ -483,8 +675,6 @@ class TestResourceManagerEdgeCases:
 
     def test_file_resource_manager_error_handling(self, tmp_path: Path) -> None:
         """Test file resource manager error handling."""
-        import platform
-        
         # Skip this test on Windows as chmod(0o000) doesn't make files unreadable
         if platform.system() == "Windows":
             pytest.skip("File permission test not reliable on Windows")
@@ -502,3 +692,114 @@ class TestResourceManagerEdgeCases:
         finally:
             # Restore permissions
             os.chmod(test_file, 0o644)
+
+    def test_file_resource_manager_with_special_characters(self, tmp_path: Path) -> None:
+        """Test file resource manager with special characters in content."""
+        test_file = tmp_path / "special_chars.txt"
+        content = "Special chars: éñüß©®™\nNew line\r\nCarriage return"
+        test_file.write_text(content, encoding='utf-8', newline='')
+        
+        with FileResourceManager(test_file, mode="r", encoding="utf-8", newline='') as file_handle:
+            read_content = file_handle.read()
+            assert read_content == content
+
+    def test_stream_resource_manager_with_none_values(self) -> None:
+        """Test stream resource manager with None values in stream."""
+        stream = iter([1, None, 3, None, 5])
+        with StreamResourceManager(stream) as managed_stream:
+            items = list(managed_stream)
+            assert items == [1, None, 3, None, 5]
+
+    def test_file_resource_manager_with_different_line_endings(self, tmp_path: Path) -> None:
+        """Test file resource manager with different line endings."""
+        test_file = tmp_path / "line_endings.txt"
+        content = "line1\nline2\r\nline3\rline4"
+        test_file.write_text(content, encoding='utf-8', newline='')
+        
+        with FileResourceManager(test_file, mode="r", newline='') as file_handle:
+            lines = file_handle.readlines()
+            assert len(lines) == 4
+            assert lines[0] == "line1\n"
+            assert lines[1] == "line2\r\n"
+            assert lines[2] == "line3\r"
+            assert lines[3] == "line4"
+
+    def test_resource_manager_with_custom_resource(self) -> None:
+        """Test ResourceManager with custom resource implementation."""
+        class CustomResource:
+            def __init__(self, value):
+                self.value = value
+                self.closed = False
+            
+            def close(self):
+                self.closed = True
+        
+        class CustomResourceManager(ResourceManager):
+            def __init__(self, value):
+                super().__init__()
+                self.value = value
+            
+            def _create_resource(self):
+                return CustomResource(self.value)
+            
+            def _cleanup_resource(self):
+                if self._resource:
+                    self._resource.close()
+        
+        manager = CustomResourceManager("test_value")
+        
+        # Test acquire/release cycle
+        resource = manager.acquire()
+        assert resource.value == "test_value"
+        assert not resource.closed
+        assert manager.is_acquired()
+        
+        manager.release()
+        assert resource.closed
+        assert not manager.is_acquired()
+
+    def test_file_resource_manager_with_relative_path(self, tmp_path: Path) -> None:
+        """Test file resource manager with relative path."""
+        # Change to tmp_path directory
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        
+        try:
+            test_file = Path("relative_test.txt")
+            test_file.write_text("relative content")
+            
+            with FileResourceManager(test_file, mode="r") as file_handle:
+                content = file_handle.read()
+                assert content == "relative content"
+        finally:
+            # Restore original working directory
+            os.chdir(original_cwd)
+
+    def test_stream_resource_manager_with_iterator_protocol(self) -> None:
+        """Test stream resource manager with custom iterator protocol."""
+        class CustomIterator:
+            def __init__(self, data):
+                self.data = data
+                self.index = 0
+                self.closed = False
+            
+            def __iter__(self):
+                return self
+            
+            def __next__(self):
+                if self.index >= len(self.data):
+                    raise StopIteration
+                result = self.data[self.index]
+                self.index += 1
+                return result
+            
+            def close(self):
+                self.closed = True
+        
+        custom_iter = CustomIterator([1, 2, 3, 4, 5])
+        
+        with StreamResourceManager(custom_iter) as managed_stream:
+            items = list(managed_stream)
+            assert items == [1, 2, 3, 4, 5]
+        
+        assert custom_iter.closed

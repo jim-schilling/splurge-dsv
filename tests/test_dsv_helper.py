@@ -5,6 +5,8 @@ Tests all public methods of the DsvHelper class including
 parsing, file operations, and streaming functionality.
 """
 
+import os
+import platform
 from pathlib import Path
 
 import pytest
@@ -80,6 +82,10 @@ class TestDsvHelperParse:
         """Test parsing with bracket bookends."""
         result = DsvHelper.parse("[a],[b],[c]", delimiter=",", bookend="[")
         assert result == ["[a]", "[b]", "[c]"]
+        
+        # Test with matching bracket bookends
+        result = DsvHelper.parse("[a[,[b[,[c[", delimiter=",", bookend="[")
+        assert result == ["a", "b", "c"]
 
     def test_parse_empty_string(self) -> None:
         """Test parsing empty string."""
@@ -502,7 +508,6 @@ class TestDsvHelperEdgeCases:
     def test_parse_file_with_permission_error(self, tmp_path: Path) -> None:
         """Test parsing file with permission error."""
         # Skip this test on Windows as permission handling differs
-        import platform
         if platform.system() == "Windows":
             pytest.skip("Permission error test not reliable on Windows")
         
@@ -510,7 +515,6 @@ class TestDsvHelperEdgeCases:
         test_file.write_text("a,b,c")
         
         # Make file unreadable
-        import os
         os.chmod(test_file, 0o000)
         
         try:
