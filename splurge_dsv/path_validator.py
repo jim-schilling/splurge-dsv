@@ -161,6 +161,22 @@ class PathValidator:
         return resolved_path
     
     @classmethod
+    def _is_valid_windows_drive_pattern(cls, path_str: str) -> bool:
+        """
+        Check if a path string contains a valid Windows drive letter pattern.
+        
+        Args:
+            path_str: Path string to validate
+            
+        Returns:
+            True if the path contains a valid Windows drive letter pattern,
+            False otherwise
+        """
+        # Must be C: at the end of the string, or C:\ (or C:/) followed by path
+        return (re.match(r'^[A-Za-z]:$', path_str) or 
+                re.match(r'^[A-Za-z]:[\\/]', path_str))
+
+    @classmethod
     def _check_dangerous_characters(cls, path_str: str) -> None:
         """Check for dangerous characters in path string."""
         # Check for dangerous characters, but allow colons in Windows drive letters
@@ -173,9 +189,7 @@ class PathValidator:
         
         # Special handling for colons - only allow them in Windows drive letters (e.g., C:)
         if ':' in path_str:
-            # Check if it's a valid Windows drive letter pattern
-            # Must be C: at the end of the string, or C:\ (or C:/) followed by path; not C: followed by other content
-            if not re.match(r'^[A-Za-z]:$', path_str) and not re.match(r'^[A-Za-z]:[\\/]', path_str):
+            if not cls._is_valid_windows_drive_pattern(path_str):
                 raise SplurgePathValidationError(
                     "Path contains colon in invalid position",
                     details="Colons are only allowed in Windows drive letters (e.g., C: or C:\\)"

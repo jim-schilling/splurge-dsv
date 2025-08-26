@@ -36,10 +36,10 @@ class TestResourceManager:
         assert manager._resource is None
 
     def test_acquire_not_implemented(self) -> None:
-        """Test that acquire raises SplurgeResourceAcquisitionError."""
+        """Test that acquire raises NotImplementedError when _create_resource is not implemented."""
         manager = ResourceManager()
         
-        with pytest.raises(SplurgeResourceAcquisitionError):
+        with pytest.raises(NotImplementedError):
             manager.acquire()
 
     def test_release_not_acquired(self) -> None:

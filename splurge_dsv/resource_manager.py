@@ -124,6 +124,7 @@ class ResourceManager:
             The acquired resource
             
         Raises:
+            NotImplementedError: If _create_resource is not implemented by subclass
             SplurgeResourceAcquisitionError: If resource cannot be acquired
         """
         if self._is_acquired_flag:
@@ -136,6 +137,9 @@ class ResourceManager:
             self._resource = self._create_resource()
             self._is_acquired_flag = True
             return self._resource
+        except NotImplementedError:
+            # Re-raise NotImplementedError without wrapping it
+            raise
         except Exception as e:
             raise SplurgeResourceAcquisitionError(
                 "Failed to acquire resource",
