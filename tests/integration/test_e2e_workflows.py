@@ -30,7 +30,13 @@ class TestEndToEndCLIWorkflows:
 
         for cmd in possible_paths:
             try:
-                result = subprocess.run([cmd, "--help"], capture_output=True, text=True, timeout=5)
+                # Split the command if it contains spaces
+                if " " in cmd:
+                    cmd_parts = cmd.split() + ["--help"]
+                else:
+                    cmd_parts = [cmd, "--help"]
+
+                result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     return cmd
             except (subprocess.TimeoutExpired, FileNotFoundError, OSError):

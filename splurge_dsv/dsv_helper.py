@@ -232,13 +232,15 @@ class DsvHelper:
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
         # Use TextFileHelper.read_as_stream for consistent error handling
-        for chunk in TextFileHelper.read_as_stream(
-            file_path,
-            encoding=encoding,
-            skip_header_rows=skip_header_rows,
-            skip_footer_rows=skip_footer_rows,
-            chunk_size=chunk_size,
-        ):
-            yield cls._process_stream_chunk(
+        yield from (
+            cls._process_stream_chunk(
                 chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip
             )
+            for chunk in TextFileHelper.read_as_stream(
+                file_path,
+                encoding=encoding,
+                skip_header_rows=skip_header_rows,
+                skip_footer_rows=skip_footer_rows,
+                chunk_size=chunk_size,
+            )
+        )

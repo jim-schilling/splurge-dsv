@@ -311,20 +311,7 @@ class TestTextFileHelperReadAsStream:
 
         chunks = list(TextFileHelper.read_as_stream(test_file, chunk_size=3))
         # chunk_size=3 is overridden to DEFAULT_MIN_CHUNK_SIZE=100, so all lines are in one chunk
-        expected = [
-            [
-                "line 1",
-                "line 2",
-                "line 3",
-                "line 4",
-                "line 5",
-                "line 6",
-                "line 7",
-                "line 8",
-                "line 9",
-                "line 10",
-            ]
-        ]
+        expected = [[f"line {i}" for i in range(1, 11)]]
         assert chunks == expected
 
     def test_read_as_stream_with_skip_header(self, tmp_path: Path) -> None:
@@ -446,20 +433,7 @@ class TestTextFileHelperReadAsStream:
 
         chunks = list(TextFileHelper.read_as_stream(test_file, skip_header_rows=1, skip_footer_rows=2, chunk_size=100))
         # chunk_size=3 is overridden to minimum 100, so all lines are in one chunk
-        expected_chunks = [
-            [
-                "line 1",
-                "line 2",
-                "line 3",
-                "line 4",
-                "line 5",
-                "line 6",
-                "line 7",
-                "line 8",
-                "line 9",
-                "line 10",
-            ]
-        ]
+        expected_chunks = [[f"line {i}" for i in range(1, 11)]]
         assert chunks == expected_chunks
 
     def test_read_as_stream_zero_skip_values(self, tmp_path: Path) -> None:

@@ -1,8 +1,10 @@
 """
 Tests for the DSV helper module.
 
-Tests the main DSV parsing functionality including string parsing,
-file parsing, and streaming operations.
+Tests the core DSV parsing functionality for string-based operations,
+including single string parsing (parse method), multiple string parsing
+(parses method), and edge cases with Unicode content and special characters.
+File parsing and streaming operations are tested in integration tests.
 """
 
 # Third-party imports
