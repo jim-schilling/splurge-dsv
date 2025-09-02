@@ -121,7 +121,13 @@ Another,incomplete,row"""
             else:
                 cmd_parts = [cli_command] + args
 
-            result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=30, cwd=os.getcwd())
+            result = subprocess.run(
+                cmd_parts,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=os.getcwd(),
+            )
             return result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired:
             return -1, "", "Command timed out"
@@ -524,8 +530,14 @@ P005,Tablet,500,Electronics"""
         pipe_file.write_text("a|b|c\nd|e|f")
 
         # Test each format
-        for file_path, delimiter in [(csv_file, ","), (tsv_file, "\t"), (pipe_file, "|")]:
-            returncode, stdout, stderr = self.run_cli_command(cli_command, [str(file_path), "--delimiter", delimiter])
+        for file_path, delimiter in [
+            (csv_file, ","),
+            (tsv_file, "\t"),
+            (pipe_file, "|"),
+        ]:
+            returncode, stdout, stderr = self.run_cli_command(
+                cli_command, [str(file_path), "--delimiter", delimiter]
+            )
             assert returncode == 0, f"Failed to parse {file_path}: {stderr}"
             assert "a" in stdout and "b" in stdout and "c" in stdout
 

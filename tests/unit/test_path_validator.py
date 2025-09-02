@@ -16,7 +16,11 @@ from unittest.mock import patch
 import pytest
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeFileNotFoundError, SplurgeFilePermissionError, SplurgePathValidationError
+from splurge_dsv.exceptions import (
+    SplurgeFileNotFoundError,
+    SplurgeFilePermissionError,
+    SplurgePathValidationError,
+)
 from splurge_dsv.path_validator import PathValidator
 
 
@@ -250,7 +254,14 @@ class TestPathValidatorSanitizeFilename:
 
     def test_sanitize_valid_filename_unchanged(self) -> None:
         """Test that valid filename is unchanged."""
-        valid_names = ["filename.txt", "file-name.txt", "file_name.txt", "file123.txt", "file.txt", "file"]
+        valid_names = [
+            "filename.txt",
+            "file-name.txt",
+            "file_name.txt",
+            "file123.txt",
+            "file.txt",
+            "file",
+        ]
 
         for name in valid_names:
             result = PathValidator.sanitize_filename(name)
@@ -274,7 +285,14 @@ class TestPathValidatorIsSafePath:
 
     def test_is_safe_path_dangerous_characters(self) -> None:
         """Test that path with dangerous characters returns False."""
-        dangerous_paths = ["file<.txt", "file>.txt", 'file".txt', "file|.txt", "file?.txt", "file*.txt"]
+        dangerous_paths = [
+            "file<.txt",
+            "file>.txt",
+            'file".txt',
+            "file|.txt",
+            "file?.txt",
+            "file*.txt",
+        ]
 
         for path in dangerous_paths:
             assert PathValidator.is_safe_path(path) is False

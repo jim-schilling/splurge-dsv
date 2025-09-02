@@ -64,13 +64,19 @@ class TestCliParseArguments:
 
     def test_parse_arguments_with_bookend(self) -> None:
         """Test argument parsing with bookend option."""
-        with patch.object(sys, "argv", ["script", "test.txt", "--delimiter", "|", "--bookend", '"']):
+        with patch.object(
+            sys, "argv", ["script", "test.txt", "--delimiter", "|", "--bookend", '"']
+        ):
             args = parse_arguments()
             assert args.bookend == '"'
 
     def test_parse_arguments_with_no_strip_options(self) -> None:
         """Test argument parsing with no-strip options."""
-        with patch.object(sys, "argv", ["script", "test.csv", "--delimiter", ",", "--no-strip", "--no-bookend-strip"]):
+        with patch.object(
+            sys,
+            "argv",
+            ["script", "test.csv", "--delimiter", ",", "--no-strip", "--no-bookend-strip"],
+        ):
             args = parse_arguments()
             assert args.no_strip
             assert args.no_bookend_strip
