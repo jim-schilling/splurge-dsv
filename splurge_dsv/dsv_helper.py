@@ -8,12 +8,15 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
+# Standard library imports
+from collections.abc import Iterator
 from os import PathLike
-from typing import Iterator
 
+# Local imports
+from splurge_dsv.exceptions import SplurgeParameterError
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
-from splurge_dsv.exceptions import SplurgeParameterError
+
 
 class DsvHelper:
     """
@@ -38,7 +41,7 @@ class DsvHelper:
         delimiter: str,
         strip: bool = DEFAULT_STRIP,
         bookend: str | None = None,
-        bookend_strip: bool = DEFAULT_BOOKEND_STRIP
+        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[str]:
         """
         Parse a string into a list of strings.
@@ -68,10 +71,7 @@ class DsvHelper:
         tokens: list[str] = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
 
         if bookend:
-            tokens = [
-                StringTokenizer.remove_bookends(token, bookend=bookend, strip=bookend_strip)
-                for token in tokens
-            ]
+            tokens = [StringTokenizer.remove_bookends(token, bookend=bookend, strip=bookend_strip) for token in tokens]
 
         return tokens
 
@@ -83,7 +83,7 @@ class DsvHelper:
         delimiter: str,
         strip: bool = DEFAULT_STRIP,
         bookend: str | None = None,
-        bookend_strip: bool = DEFAULT_BOOKEND_STRIP
+        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[list[str]]:
         """
         Parse a list of strings into a list of lists of strings.
@@ -108,7 +108,7 @@ class DsvHelper:
         """
         if not isinstance(content, list):
             raise SplurgeParameterError("content must be a list")
-        
+
         if not all(isinstance(item, str) for item in content):
             raise SplurgeParameterError("content must be a list of strings")
 
@@ -128,7 +128,7 @@ class DsvHelper:
         bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
         encoding: str = DEFAULT_ENCODING,
         skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
-        skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS
+        skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
     ) -> list[list[str]]:
         """
         Parse a file into a list of lists of strings.
@@ -157,19 +157,10 @@ class DsvHelper:
             [['header1', 'header2'], ['value1', 'value2']]
         """
         lines: list[str] = TextFileHelper.read(
-            file_path,
-            encoding=encoding,
-            skip_header_rows=skip_header_rows,
-            skip_footer_rows=skip_footer_rows
+            file_path, encoding=encoding, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows
         )
 
-        return cls.parses(
-            lines,
-            delimiter=delimiter,
-            strip=strip,
-            bookend=bookend,
-            bookend_strip=bookend_strip
-        )
+        return cls.parses(lines, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
 
     @classmethod
     def _process_stream_chunk(
@@ -179,28 +170,22 @@ class DsvHelper:
         delimiter: str,
         strip: bool = DEFAULT_STRIP,
         bookend: str | None = None,
-        bookend_strip: bool = DEFAULT_BOOKEND_STRIP
+        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[list[str]]:
         """
         Process a chunk of lines from the stream.
-        
+
         Args:
             chunk: List of lines to process
             delimiter: Delimiter to use for parsing
             strip: Whether to strip whitespace
             bookend: Bookend character for text fields
             bookend_strip: Whether to strip whitespace from bookends
-            
+
         Returns:
             list[list[str]]: Parsed rows
         """
-        return cls.parses(
-            chunk,
-            delimiter=delimiter,
-            strip=strip,
-            bookend=bookend,
-            bookend_strip=bookend_strip
-        )
+        return cls.parses(chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
 
     @classmethod
     def parse_stream(
@@ -214,7 +199,7 @@ class DsvHelper:
         encoding: str = DEFAULT_ENCODING,
         skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
         skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
-        chunk_size: int = DEFAULT_CHUNK_SIZE
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
     ) -> Iterator[list[list[str]]]:
         """
         Stream-parse a DSV file in chunks of lines.
@@ -247,17 +232,15 @@ class DsvHelper:
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
         # Use TextFileHelper.read_as_stream for consistent error handling
-        for chunk in TextFileHelper.read_as_stream(
-            file_path,
-            encoding=encoding,
-            skip_header_rows=skip_header_rows,
-            skip_footer_rows=skip_footer_rows,
-            chunk_size=chunk_size
-        ):
-            yield cls._process_stream_chunk(
-                chunk,
-                delimiter=delimiter,
-                strip=strip,
-                bookend=bookend,
-                bookend_strip=bookend_strip
-            )   
+        yield from (
+            cls._process_stream_chunk(
+                chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip
+            )
+            for chunk in TextFileHelper.read_as_stream(
+                file_path,
+                encoding=encoding,
+                skip_header_rows=skip_header_rows,
+                skip_footer_rows=skip_footer_rows,
+                chunk_size=chunk_size,
+            )
+        )
