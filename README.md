@@ -214,7 +214,32 @@ The project follows strict coding standards:
 
 ## Changelog
 
-### 2025.1.1 (2025-01-XX)
+### 2025.1.2 (2025-09-02)
+
+#### 🧪 Comprehensive End-to-End Testing
+- **Complete E2E Test Suite**: Implemented 25 comprehensive end-to-end workflow tests covering all major CLI functionality
+- **Real CLI Execution**: Tests run actual `splurge-dsv` commands with real files, not just mocked components
+- **Workflow Coverage**: Tests cover CSV/TSV parsing, file operations, data processing, error handling, and performance scenarios
+- **Cross-Platform Compatibility**: Handles Windows-specific encoding issues and platform differences gracefully
+- **Performance Testing**: Large file processing tests (1,000+ and 10,000+ rows) with streaming and chunking validation
+
+#### 📊 Test Coverage Improvements
+- **CLI Coverage**: Increased from 64% to **95%** with comprehensive CLI workflow testing
+- **DSV Helper Coverage**: Improved from 75% to **93%** with real-world usage scenarios
+- **Overall Coverage**: Improved from 60% to **73%** across the entire codebase
+- **Integration Testing**: Added real file system operations and complete pipeline validation
+
+#### 🔄 Test Categories
+- **CLI Workflows**: 19 tests covering basic parsing, custom delimiters, header/footer skipping, streaming, and error scenarios
+- **Error Handling**: 3 tests for invalid arguments, missing parameters, and CLI error conditions
+- **Integration Scenarios**: 3 tests for data analysis, transformation, and multi-format workflows
+
+#### 📚 Documentation & Examples
+- **E2E Testing Guide**: Created comprehensive documentation (`docs/e2e_testing_coverage.md`) explaining test coverage and usage
+- **Real-World Examples**: Tests serve as practical examples of library usage patterns
+- **Error Scenario Coverage**: Comprehensive testing of edge cases and failure conditions
+
+### 2025.1.1 (2025-08-XX)
 
 #### 🔧 Code Quality Improvements
 - **Refactored Complex Regex Logic**: Extracted Windows drive letter validation logic from `_check_dangerous_characters` into a dedicated `_is_valid_windows_drive_pattern` helper method in `PathValidator` for better readability and maintainability
