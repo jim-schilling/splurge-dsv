@@ -27,12 +27,7 @@ class StringTokenizer:
     DEFAULT_STRIP = True
 
     @staticmethod
-    def parse(
-        content: str | None,
-        *,
-        delimiter: str,        
-        strip: bool = DEFAULT_STRIP
-    ) -> list[str]:
+    def parse(content: str | None, *, delimiter: str, strip: bool = DEFAULT_STRIP) -> list[str]:
         """
         Split a string into tokens based on a delimiter.
 
@@ -68,13 +63,7 @@ class StringTokenizer:
         return result
 
     @classmethod
-    def parses(
-        cls,
-        content: list[str],
-        *,
-        delimiter: str,
-        strip: bool = DEFAULT_STRIP
-    ) -> list[list[str]]:
+    def parses(cls, content: list[str], *, delimiter: str, strip: bool = DEFAULT_STRIP) -> list[list[str]]:
         """
         Process multiple strings into lists of tokens.
 
@@ -99,12 +88,7 @@ class StringTokenizer:
         return [cls.parse(text, delimiter=delimiter, strip=strip) for text in content]
 
     @staticmethod
-    def remove_bookends(
-        content: str,
-        *,
-        bookend: str,
-        strip: bool = DEFAULT_STRIP
-    ) -> str:
+    def remove_bookends(content: str, *, bookend: str, strip: bool = DEFAULT_STRIP) -> str:
         """
         Remove matching characters from both ends of a string.
 
@@ -127,10 +111,6 @@ class StringTokenizer:
             raise SplurgeParameterError("bookend cannot be empty or None")
 
         value: str = content.strip() if strip else content
-        if (
-            value.startswith(bookend)
-            and value.endswith(bookend)
-            and len(value) > 2 * len(bookend) - 1
-        ):
+        if value.startswith(bookend) and value.endswith(bookend) and len(value) > 2 * len(bookend) - 1:
             return value[len(bookend) : -len(bookend)]
         return value
