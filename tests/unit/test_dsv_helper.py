@@ -1,12 +1,14 @@
 """
-Tests for the dsv_helper module.
+Tests for the DSV helper module.
 
-Tests all public methods of the DsvHelper class including
-parsing, file operations, and streaming functionality.
+Tests the main DSV parsing functionality including string parsing,
+file parsing, and streaming operations.
 """
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeParameterError
 

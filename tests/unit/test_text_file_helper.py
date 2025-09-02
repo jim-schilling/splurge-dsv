@@ -1,16 +1,19 @@
 """
-Tests for the text_file_helper module.
+Tests for the text file helper module.
 
-Tests all public methods of the TextFileHelper class including
-line counting, file previewing, reading, and streaming operations.
+Tests text file operations including line counting,
+file previewing, and file loading functionality.
 """
 
+# Standard library imports
 import os
 import platform
 from pathlib import Path
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.exceptions import (
     SplurgeFileEncodingError,
     SplurgeFileNotFoundError,

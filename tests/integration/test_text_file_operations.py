@@ -1,22 +1,25 @@
 """
 Integration tests for text file operations.
 
-These tests verify the interaction between multiple components
-and test actual file system operations for text file handling.
+Tests text file operations including reading,
+writing, and processing with real files.
 """
 
+# Standard library imports
 import os
 import platform
 from pathlib import Path
 
+# Third-party imports
 import pytest
 
-from splurge_dsv.text_file_helper import TextFileHelper
+# Local imports
 from splurge_dsv.exceptions import (
+    SplurgeFileEncodingError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
-    SplurgeFileEncodingError,
 )
+from splurge_dsv.text_file_helper import TextFileHelper
 
 
 class TestTextFileHelperLineCountIntegration:
@@ -404,21 +407,21 @@ class TestTextFileHelperEncodingIntegration:
     def test_stream_large_file(self, tmp_path: Path) -> None:
         """Test streaming large file."""
         test_file = tmp_path / "large.txt"
-        
+
         # Create a large file with 1000 lines
         lines = []
         for i in range(1000):
             lines.append(f"line {i} with some content")
-        
+
         test_file.write_text("\n".join(lines))
 
         # Stream the file
         result = list(TextFileHelper.read_as_stream(test_file))
-        
+
         # The result is a list of chunks, each chunk contains multiple lines
         total_lines = sum(len(chunk) for chunk in result)
         assert total_lines == 1000  # Total lines should be 1000
-        
+
         # Check first and last lines
         first_line = result[0][0]
         last_line = result[-1][-1]

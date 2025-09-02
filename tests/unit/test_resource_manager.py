@@ -1,16 +1,19 @@
 """
-Tests for the resource_manager module.
+Tests for the resource manager module.
 
-Tests all public classes and context managers including
-file operations, temporary files, and stream management.
+Tests resource management functionality including file operations,
+stream operations, and context managers.
 """
 
+# Standard library imports
 import os
 import platform
 from pathlib import Path
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.exceptions import (
     SplurgeFileEncodingError,
     SplurgeFileNotFoundError,
@@ -482,8 +485,7 @@ class TestStreamResourceManager:
         """Test context manager with generator function."""
 
         def number_generator():
-            for i in range(1, 4):
-                yield i
+            yield from range(1, 4)
 
         with StreamResourceManager(number_generator()) as managed_stream:
             items = list(managed_stream)
@@ -613,8 +615,7 @@ class TestSafeStreamOperation:
         """Test safe stream operation with generator function."""
 
         def number_generator():
-            for i in range(1, 4):
-                yield i
+            yield from range(1, 4)
 
         with safe_stream_operation(number_generator()) as managed_stream:
             items = list(managed_stream)

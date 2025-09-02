@@ -1,10 +1,10 @@
 """
 Tests for the exceptions module.
 
-Tests all custom exception classes and their behavior including
-message handling, details, and inheritance hierarchy.
+Tests all custom exception classes and their functionality.
 """
 
+# Local imports
 from splurge_dsv.exceptions import (
     SplurgeConfigurationError,
     SplurgeDataProcessingError,

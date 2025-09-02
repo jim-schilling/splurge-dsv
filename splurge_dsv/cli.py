@@ -9,10 +9,12 @@ Usage:
     python -m splurge_dsv --help
 """
 
+# Standard library imports
 import argparse
 import sys
 from pathlib import Path
 
+# Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeDsvError
 

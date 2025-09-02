@@ -11,10 +11,12 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
+# Standard library imports
 import os
 import re
 from pathlib import Path
 
+# Local imports
 from splurge_dsv.exceptions import SplurgeFileNotFoundError, SplurgeFilePermissionError, SplurgePathValidationError
 
 # Module-level constants for path validation

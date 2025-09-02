@@ -11,6 +11,7 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
+# Local imports
 from splurge_dsv.exceptions import SplurgeParameterError
 
 

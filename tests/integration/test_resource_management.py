@@ -1,23 +1,26 @@
 """
-Integration tests for resource management operations.
+Integration tests for resource management.
 
-These tests verify the interaction between multiple components
-and test actual file system operations for resource management.
+Tests resource management functionality including
+file operations and context managers with real files.
 """
 
+# Standard library imports
 import os
 import platform
 from pathlib import Path
 
+# Third-party imports
 import pytest
 
-from splurge_dsv.resource_manager import FileResourceManager
+# Local imports
 from splurge_dsv.exceptions import (
+    SplurgeFileEncodingError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
-    SplurgeFileEncodingError,
     SplurgePathValidationError,
 )
+from splurge_dsv.resource_manager import FileResourceManager
 
 
 class TestFileResourceManagerIntegration:
@@ -221,7 +224,7 @@ class TestFileResourceManagerAdvancedIntegration:
         # Test that the file is properly closed even when an error occurs
         try:
             with FileResourceManager(test_file, mode="r") as file_handle:
-                content = file_handle.read()
+                file_handle.read()
                 raise RuntimeError("Test error")
         except RuntimeError:
             pass
@@ -331,7 +334,7 @@ class TestSafeFileOperationsIntegration:
         from splurge_dsv.resource_manager import safe_file_operation
 
         with pytest.raises(SplurgeFileNotFoundError):
-            with safe_file_operation(test_file, mode="r") as file_handle:
+            with safe_file_operation(test_file, mode="r") as _:
                 pass
 
     def test_safe_file_operation_with_all_parameters(self, tmp_path: Path) -> None:
@@ -356,5 +359,5 @@ class TestSafeFileOperationsIntegration:
         from splurge_dsv.resource_manager import safe_file_operation
 
         with pytest.raises(RuntimeError, match="Test exception"):
-            with safe_file_operation(test_file, mode="r") as file_handle:
+            with safe_file_operation(test_file, mode="r") as _:
                 raise RuntimeError("Test exception")

@@ -22,11 +22,13 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
+# Standard library imports
 from collections import deque
 from collections.abc import Iterator
 from os import PathLike
 from pathlib import Path
 
+# Local imports
 from splurge_dsv.exceptions import SplurgeFileEncodingError, SplurgeParameterError
 from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.resource_manager import safe_file_operation
@@ -316,7 +318,4 @@ class TextFileHelper:
                         result.append(processed_line)
                     return result
             except UnicodeDecodeError as e:
-                raise SplurgeFileEncodingError(
-                    f"Encoding error reading file: {validated_path}",
-                    details=str(e)
-                ) from e
+                raise SplurgeFileEncodingError(f"Encoding error reading file: {validated_path}", details=str(e)) from e

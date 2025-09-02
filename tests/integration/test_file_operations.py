@@ -1,24 +1,24 @@
 """
 Integration tests for file operations.
 
-These tests verify the interaction between multiple components
-and test actual file system operations.
+Tests file operations including reading, writing,
+and processing with real file system interactions.
 """
 
+# Standard library imports
 import os
 import platform
 from pathlib import Path
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.text_file_helper import TextFileHelper
-from splurge_dsv.resource_manager import FileResourceManager
 from splurge_dsv.exceptions import (
+    SplurgeFileEncodingError,
     SplurgeFileNotFoundError,
     SplurgeFilePermissionError,
-    SplurgeFileEncodingError,
-    SplurgePathValidationError,
     SplurgeParameterError,
 )
 
@@ -256,22 +256,22 @@ class TestLargeFileIntegration:
     def test_parse_stream_large_file(self, tmp_path: Path) -> None:
         """Test streaming large file."""
         test_file = tmp_path / "large.csv"
-        
+
         # Create a large file with 1000 rows
         lines = []
         for i in range(1000):
             lines.append(f"row{i},value{i},data{i}")
-        
+
         test_file.write_text("\n".join(lines))
 
         # Stream the file
         result = list(DsvHelper.parse_stream(test_file, delimiter=","))
-        
+
         # The result is a list of chunks, each chunk contains multiple rows
         # With default chunk size, we might get multiple chunks
         total_rows = sum(len(chunk) for chunk in result)
         assert total_rows == 1000  # Total rows should be 1000
-        
+
         # Check first and last rows
         first_row = result[0][0]
         last_row = result[-1][-1]

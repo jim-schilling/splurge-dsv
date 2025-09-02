@@ -11,11 +11,13 @@ Please preserve this header and all related material when sharing!
 This module is licensed under the MIT License.
 """
 
+# Standard library imports
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any
 
+# Local imports
 from splurge_dsv.exceptions import (
     SplurgeFileEncodingError,
     SplurgeFileNotFoundError,

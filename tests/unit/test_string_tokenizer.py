@@ -1,12 +1,14 @@
 """
-Tests for the string_tokenizer module.
+Tests for the string tokenizer module.
 
-Tests all public methods of the StringTokenizer class including
-parsing, multiple string processing, and bookend removal.
+Tests string tokenization functionality including parsing,
+multiple string processing, and bookend removal.
 """
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.exceptions import SplurgeParameterError
 from splurge_dsv.string_tokenizer import StringTokenizer
 

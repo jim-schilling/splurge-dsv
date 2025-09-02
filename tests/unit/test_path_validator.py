@@ -1,18 +1,21 @@
 """
-Tests for the path_validator module.
+Tests for the path validator module.
 
-Tests all public methods of the PathValidator class including
-path validation, security checks, and filename sanitization.
+Tests path validation functionality including security checks,
+path normalization, and error handling.
 """
 
+# Standard library imports
 import os
 import platform
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+# Third-party imports
 import pytest
 
+# Local imports
 from splurge_dsv.exceptions import SplurgeFileNotFoundError, SplurgeFilePermissionError, SplurgePathValidationError
 from splurge_dsv.path_validator import PathValidator
 
