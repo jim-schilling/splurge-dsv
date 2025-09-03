@@ -198,7 +198,7 @@ class PathValidator:
             False otherwise
         """
         # Must be C: at the end of the string, or C:\ (or C:/) followed by path
-        return re.match(r"^[A-Za-z]:$", path_str) or re.match(r"^[A-Za-z]:[\\/]", path_str)
+        return bool(re.match(r"^[A-Za-z]:$", path_str)) or bool(re.match(r"^[A-Za-z]:[\\/]", path_str))
 
     @classmethod
     def _check_dangerous_characters(cls, path_str: str) -> None:

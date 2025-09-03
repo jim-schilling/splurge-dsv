@@ -44,7 +44,7 @@ from splurge_dsv.resource_manager import (
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
 
-__version__ = "2025.1.2"
+__version__ = "2025.1.3"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 

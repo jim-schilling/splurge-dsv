@@ -56,7 +56,7 @@ Examples:
 
     parser.add_argument("--chunk-size", type=int, default=500, help="Chunk size for streaming (default: 500)")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 2025.1.2")
+    parser.add_argument("--version", action="version", version="%(prog)s 2025.1.3")
 
     return parser.parse_args()
 
@@ -95,7 +95,7 @@ def main() -> int:
     try:
         args = parse_arguments()
 
-        # Validate file path
+        # Validate file path (kept local to maintain test compatibility)
         file_path = Path(args.file_path)
         if not file_path.exists():
             print(f"Error: File '{args.file_path}' not found.", file=sys.stderr)
