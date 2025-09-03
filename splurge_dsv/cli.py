@@ -4,9 +4,11 @@ Command-line interface for splurge-dsv.
 This module provides a command-line interface for the splurge-dsv library,
 allowing users to parse DSV files from the command line.
 
-Usage:
-    python -m splurge_dsv <file_path> [options]
-    python -m splurge_dsv --help
+Copyright (c) 2025 Jim Schilling
+
+This module is licensed under the MIT License.
+
+Please preserve this header and all related material when sharing!
 """
 
 # Standard library imports

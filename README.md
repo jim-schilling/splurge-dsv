@@ -214,6 +214,8 @@ The project follows strict coding standards:
 
 ## Changelog
 
+### 2025.1.3 (2025-09-03)
+
 ### 2025.1.2 (2025-09-02)
 
 #### 🧪 Comprehensive End-to-End Testing
