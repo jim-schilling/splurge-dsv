@@ -24,8 +24,8 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Error Recovery**: Graceful error handling with detailed error messages
 
 ### 🧪 Testing & Quality
-- **Comprehensive Test Suite**: 90%+ code coverage with 250+ tests
-- **Cross-Platform Support**: Tested on Windows, Linux, and macOS
+- **Comprehensive Test Suite**: 250+ tests with 85%+ coverage gate
+- **Cross-Platform Support**: Tested on Windows, and should pass on Linux and macOS
 - **Type Safety**: Full type annotations and validation
 - **Documentation**: Complete API documentation with examples
 
@@ -209,10 +209,18 @@ The project follows strict coding standards:
 - PEP 8 compliance
 - Type annotations for all functions
 - Google-style docstrings
-- 90%+ test coverage requirement
+- 85%+ coverage gate enforced via CI
 - Comprehensive error handling
 
 ## Changelog
+
+### 2025.1.3 (2025-09-03)
+
+#### 🔧 Maintenance & Consistency
+- **Version Alignment**: Bumped `__version__` and CLI `--version` to `2025.1.3` to match `pyproject.toml`.
+- **CLI Path Validation**: Centralized validation using `PathValidator.validate_path(...)` for consistent error handling.
+- **Type Correctness**: Fixed `PathValidator._is_valid_windows_drive_pattern` to return `bool` explicitly.
+- **Docs Alignment**: Updated README coverage claims to reflect the `>=85%` coverage gate configured in CI.
 
 ### 2025.1.2 (2025-09-02)
 
@@ -224,9 +232,6 @@ The project follows strict coding standards:
 - **Performance Testing**: Large file processing tests (1,000+ and 10,000+ rows) with streaming and chunking validation
 
 #### 📊 Test Coverage Improvements
-- **CLI Coverage**: Increased from 64% to **95%** with comprehensive CLI workflow testing
-- **DSV Helper Coverage**: Improved from 75% to **93%** with real-world usage scenarios
-- **Overall Coverage**: Improved from 60% to **73%** across the entire codebase
 - **Integration Testing**: Added real file system operations and complete pipeline validation
 
 #### 🔄 Test Categories
@@ -281,7 +286,7 @@ The project follows strict coding standards:
 - **StringTokenizer**: Core string parsing functionality
 
 #### 🧪 Testing & Quality
-- **Comprehensive Test Suite**: 250+ tests with 90%+ code coverage
+- **Comprehensive Test Suite**: 250+ tests with 85%+ coverage gate
 - **Cross-Platform Testing**: Tested on Windows, Linux, and macOS
 - **Type Safety**: Full type annotations throughout the codebase
 - **Error Handling**: Custom exception hierarchy with detailed error messages

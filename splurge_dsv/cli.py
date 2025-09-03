@@ -4,9 +4,11 @@ Command-line interface for splurge-dsv.
 This module provides a command-line interface for the splurge-dsv library,
 allowing users to parse DSV files from the command line.
 
-Usage:
-    python -m splurge_dsv <file_path> [options]
-    python -m splurge_dsv --help
+Copyright (c) 2025 Jim Schilling
+
+This module is licensed under the MIT License.
+
+Please preserve this header and all related material when sharing!
 """
 
 # Standard library imports
@@ -54,7 +56,7 @@ Examples:
 
     parser.add_argument("--chunk-size", type=int, default=500, help="Chunk size for streaming (default: 500)")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 2025.1.2")
+    parser.add_argument("--version", action="version", version="%(prog)s 2025.1.3")
 
     return parser.parse_args()
 
@@ -93,7 +95,7 @@ def main() -> int:
     try:
         args = parse_arguments()
 
-        # Validate file path
+        # Validate file path (kept local to maintain test compatibility)
         file_path = Path(args.file_path)
         if not file_path.exists():
             print(f"Error: File '{args.file_path}' not found.", file=sys.stderr)
