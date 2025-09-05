@@ -13,10 +13,12 @@ Please preserve this header and all related material when sharing!
 
 # Standard library imports
 import argparse
+import json
 import sys
 from pathlib import Path
 
 # Local imports
+from splurge_dsv import __version__
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeDsvError
 
@@ -56,7 +58,14 @@ Examples:
 
     parser.add_argument("--chunk-size", type=int, default=500, help="Chunk size for streaming (default: 500)")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 2025.1.3")
+    parser.add_argument(
+        "--output-format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format for results (default: table)",
+    )
+
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     return parser.parse_args()
 
@@ -107,7 +116,8 @@ def main() -> int:
 
         # Parse the file
         if args.stream:
-            print(f"Streaming file '{args.file_path}' with delimiter '{args.delimiter}'...")
+            if args.output_format != "json":
+                print(f"Streaming file '{args.file_path}' with delimiter '{args.delimiter}'...")
             chunk_count = 0
             total_rows = 0
 
@@ -124,13 +134,18 @@ def main() -> int:
             ):
                 chunk_count += 1
                 total_rows += len(chunk)
-                print(f"Chunk {chunk_count}: {len(chunk)} rows")
-                print_results(chunk, args.delimiter)
-                print()
+                if args.output_format == "json":
+                    print(json.dumps(chunk, ensure_ascii=False))
+                else:
+                    print(f"Chunk {chunk_count}: {len(chunk)} rows")
+                    print_results(chunk, args.delimiter)
+                    print()
 
-            print(f"Total: {total_rows} rows in {chunk_count} chunks")
+            if args.output_format != "json":
+                print(f"Total: {total_rows} rows in {chunk_count} chunks")
         else:
-            print(f"Parsing file '{args.file_path}' with delimiter '{args.delimiter}'...")
+            if args.output_format != "json":
+                print(f"Parsing file '{args.file_path}' with delimiter '{args.delimiter}'...")
             rows = DsvHelper.parse_file(
                 file_path,
                 delimiter=args.delimiter,
@@ -142,8 +157,11 @@ def main() -> int:
                 skip_footer_rows=args.skip_footer,
             )
 
-            print(f"Parsed {len(rows)} rows")
-            print_results(rows, args.delimiter)
+            if args.output_format == "json":
+                print(json.dumps(rows, ensure_ascii=False))
+            else:
+                print(f"Parsed {len(rows)} rows")
+                print_results(rows, args.delimiter)
 
         return 0
 

@@ -62,6 +62,25 @@ class TestCliParseArguments:
             assert args.stream
             assert args.chunk_size == 100
 
+    def test_parse_arguments_with_output_format(self) -> None:
+        """Test argument parsing with output format option."""
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "script",
+                "test.csv",
+                "--delimiter",
+                ",",
+                "--output-format",
+                "json",
+            ],
+        ):
+            args = parse_arguments()
+            assert args.file_path == "test.csv"
+            assert args.delimiter == ","
+            assert args.output_format == "json"
+
     def test_parse_arguments_with_bookend(self) -> None:
         """Test argument parsing with bookend option."""
         with patch.object(
@@ -145,6 +164,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock print_results to avoid output during testing
@@ -219,6 +239,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = True
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock print_results to avoid output during testing
@@ -255,6 +276,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
@@ -285,6 +307,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock DsvHelper.parse_file to raise KeyboardInterrupt
@@ -319,6 +342,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock DsvHelper.parse_file to raise an unexpected error
