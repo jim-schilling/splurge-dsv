@@ -99,8 +99,25 @@ def print_results(rows: list[list[str]], delimiter: str) -> None:
                 print("-" * (sum(max_widths) + len(max_widths) * 3 - 1))
 
 
-def main() -> int:
-    """Main entry point for the command-line interface."""
+def run_cli() -> int:
+    """Run the command-line interface for DSV file parsing.
+
+    This function serves as the main entry point for the splurge-dsv CLI tool.
+    It parses command-line arguments, validates the input file, and processes
+    DSV files according to the specified options. Supports both regular parsing
+    and streaming modes for large files.
+
+    Returns:
+        int: Exit code indicating success or failure:
+            - 0: Success
+            - 1: Generic error (file not found, parsing error, etc.)
+            - 2: Invalid arguments
+            - 130: Operation interrupted (Ctrl+C)
+
+    Raises:
+        SystemExit: Terminates the program with the appropriate exit code.
+            This is handled internally and should not be caught by callers.
+    """
     try:
         args = parse_arguments()
 

@@ -4,9 +4,9 @@ Integration tests for CLI JSON output.
 
 # Standard library imports
 import json
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Third-party imports
 import pytest

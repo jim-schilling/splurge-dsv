@@ -14,7 +14,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Tuple
 
 
 def create_sample_csv_file(target_path: Path) -> None:
@@ -23,7 +22,7 @@ def create_sample_csv_file(target_path: Path) -> None:
     target_path.write_text(content)
 
 
-def run_cli_command(args: list[str]) -> Tuple[int, str, str]:
+def run_cli_command(args: list[str]) -> tuple[int, str, str]:
     """Run the splurge-dsv CLI and capture outputs.
 
     Returns (returncode, stdout, stderr).
@@ -46,9 +45,7 @@ def demonstrate_table_output(data_file: Path) -> None:
 def demonstrate_json_output(data_file: Path) -> None:
     """Show JSON output and parse it back into Python objects."""
     print("\n=== JSON Output ===")
-    code, stdout, stderr = run_cli_command(
-        [str(data_file), "--delimiter", ",", "--output-format", "json"]
-    )
+    code, stdout, stderr = run_cli_command([str(data_file), "--delimiter", ",", "--output-format", "json"])
     if code != 0:
         print(f"Error (json): {stderr}")
         return
@@ -107,5 +104,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Local imports
-from splurge_dsv.cli import main, parse_arguments, print_results
+from splurge_dsv.cli import parse_arguments, print_results, run_cli
 from splurge_dsv.exceptions import SplurgeDsvError
 
 
@@ -169,7 +169,7 @@ class TestCliMain:
 
             # Mock print_results to avoid output during testing
             with patch("splurge_dsv.cli.print_results"):
-                result = main()
+                result = run_cli()
 
         assert result == 0
         mock_dsv_helper.parse_file.assert_called_once()
@@ -188,7 +188,7 @@ class TestCliMain:
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -208,7 +208,7 @@ class TestCliMain:
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -245,7 +245,7 @@ class TestCliMain:
             # Mock print_results to avoid output during testing
             with patch("splurge_dsv.cli.print_results"):
                 with patch("splurge_dsv.cli.print"):
-                    result = main()
+                    result = run_cli()
 
         assert result == 0
         mock_dsv_helper.parse_stream.assert_called_once()
@@ -280,7 +280,7 @@ class TestCliMain:
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -315,7 +315,7 @@ class TestCliMain:
                 mock_dsv_helper.parse_file.side_effect = KeyboardInterrupt()
 
                 with patch("splurge_dsv.cli.print") as mock_print:
-                    result = main()
+                    result = run_cli()
 
         assert result == 130
         mock_print.assert_called()
@@ -350,7 +350,7 @@ class TestCliMain:
                 mock_dsv_helper.parse_file.side_effect = RuntimeError("Unexpected error")
 
                 with patch("splurge_dsv.cli.print") as mock_print:
-                    result = main()
+                    result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
