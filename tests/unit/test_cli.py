@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Local imports
-from splurge_dsv.cli import main, parse_arguments, print_results
+from splurge_dsv.cli import parse_arguments, print_results, run_cli
 from splurge_dsv.exceptions import SplurgeDsvError
 
 
@@ -61,6 +61,25 @@ class TestCliParseArguments:
             assert args.skip_footer == 1
             assert args.stream
             assert args.chunk_size == 100
+
+    def test_parse_arguments_with_output_format(self) -> None:
+        """Test argument parsing with output format option."""
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "script",
+                "test.csv",
+                "--delimiter",
+                ",",
+                "--output-format",
+                "json",
+            ],
+        ):
+            args = parse_arguments()
+            assert args.file_path == "test.csv"
+            assert args.delimiter == ","
+            assert args.output_format == "json"
 
     def test_parse_arguments_with_bookend(self) -> None:
         """Test argument parsing with bookend option."""
@@ -145,11 +164,12 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock print_results to avoid output during testing
             with patch("splurge_dsv.cli.print_results"):
-                result = main()
+                result = run_cli()
 
         assert result == 0
         mock_dsv_helper.parse_file.assert_called_once()
@@ -168,7 +188,7 @@ class TestCliMain:
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -188,7 +208,7 @@ class TestCliMain:
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -219,12 +239,13 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = True
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock print_results to avoid output during testing
             with patch("splurge_dsv.cli.print_results"):
                 with patch("splurge_dsv.cli.print"):
-                    result = main()
+                    result = run_cli()
 
         assert result == 0
         mock_dsv_helper.parse_stream.assert_called_once()
@@ -255,10 +276,11 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             with patch("splurge_dsv.cli.print") as mock_print:
-                result = main()
+                result = run_cli()
 
         assert result == 1
         mock_print.assert_called()
@@ -285,6 +307,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock DsvHelper.parse_file to raise KeyboardInterrupt
@@ -292,7 +315,7 @@ class TestCliMain:
                 mock_dsv_helper.parse_file.side_effect = KeyboardInterrupt()
 
                 with patch("splurge_dsv.cli.print") as mock_print:
-                    result = main()
+                    result = run_cli()
 
         assert result == 130
         mock_print.assert_called()
@@ -319,6 +342,7 @@ class TestCliMain:
             mock_args.skip_footer = 0
             mock_args.stream = False
             mock_args.chunk_size = 500
+            mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
             # Mock DsvHelper.parse_file to raise an unexpected error
@@ -326,7 +350,7 @@ class TestCliMain:
                 mock_dsv_helper.parse_file.side_effect = RuntimeError("Unexpected error")
 
                 with patch("splurge_dsv.cli.print") as mock_print:
-                    result = main()
+                    result = run_cli()
 
         assert result == 1
         mock_print.assert_called()

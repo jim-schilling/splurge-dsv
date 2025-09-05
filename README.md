@@ -214,96 +214,16 @@ The project follows strict coding standards:
 
 ## Changelog
 
-### 2025.1.3 (2025-09-03)
-
-#### 🔧 Maintenance & Consistency
-- **Version Alignment**: Bumped `__version__` and CLI `--version` to `2025.1.3` to match `pyproject.toml`.
-- **CLI Path Validation**: Centralized validation using `PathValidator.validate_path(...)` for consistent error handling.
-- **Type Correctness**: Fixed `PathValidator._is_valid_windows_drive_pattern` to return `bool` explicitly.
-- **Docs Alignment**: Updated README coverage claims to reflect the `>=85%` coverage gate configured in CI.
-
-### 2025.1.2 (2025-09-02)
-
-#### 🧪 Comprehensive End-to-End Testing
-- **Complete E2E Test Suite**: Implemented 25 comprehensive end-to-end workflow tests covering all major CLI functionality
-- **Real CLI Execution**: Tests run actual `splurge-dsv` commands with real files, not just mocked components
-- **Workflow Coverage**: Tests cover CSV/TSV parsing, file operations, data processing, error handling, and performance scenarios
-- **Cross-Platform Compatibility**: Handles Windows-specific encoding issues and platform differences gracefully
-- **Performance Testing**: Large file processing tests (1,000+ and 10,000+ rows) with streaming and chunking validation
-
-#### 📊 Test Coverage Improvements
-- **Integration Testing**: Added real file system operations and complete pipeline validation
-
-#### 🔄 Test Categories
-- **CLI Workflows**: 19 tests covering basic parsing, custom delimiters, header/footer skipping, streaming, and error scenarios
-- **Error Handling**: 3 tests for invalid arguments, missing parameters, and CLI error conditions
-- **Integration Scenarios**: 3 tests for data analysis, transformation, and multi-format workflows
-
-#### 📚 Documentation & Examples
-- **E2E Testing Guide**: Created comprehensive documentation (`docs/e2e_testing_coverage.md`) explaining test coverage and usage
-- **Real-World Examples**: Tests serve as practical examples of library usage patterns
-- **Error Scenario Coverage**: Comprehensive testing of edge cases and failure conditions
-
-### 2025.1.1 (2025-08-XX)
-
-#### 🔧 Code Quality Improvements
-- **Refactored Complex Regex Logic**: Extracted Windows drive letter validation logic from `_check_dangerous_characters` into a dedicated `_is_valid_windows_drive_pattern` helper method in `PathValidator` for better readability and maintainability
-- **Exception Handling Consistency**: Fixed inconsistency in `ResourceManager.acquire()` method to properly re-raise `NotImplementedError` without wrapping it in `SplurgeResourceAcquisitionError`
-- **Import Organization**: Moved all imports to the top of modules across the entire codebase for better code structure and PEP 8 compliance
-
-#### 🧪 Testing Enhancements
-- **Public API Focus**: Removed all tests that validated private implementation details, focusing exclusively on public API behavior validation
-- **Comprehensive Resource Manager Tests**: Added extensive test suite for `ResourceManager` module covering all public methods, edge cases, error scenarios, and context manager behavior
-- **Bookend Logic Clarification**: Updated and corrected all tests related to `StringTokenizer.remove_bookends` to properly reflect its single-character, symmetric bookend matching behavior
-- **Path Validation Test Clarity**: Clarified test expectations and comments for Windows drive-relative paths (e.g., "C:file.txt") to reflect the validator's intentionally strict security design
-
-#### 🐛 Bug Fixes
-- **Test Reliability**: Fixed failing tests in `ResourceManager` context manager scenarios by properly handling file truncation and line ending normalization
-- **Ruff Compliance**: Resolved all linting warnings including unused variables and imports
-
-#### 📚 Documentation Updates
-- **Method Documentation**: Updated `ResourceManager.acquire()` docstring to include `NotImplementedError` in the Raises section
-- **Test Comments**: Enhanced test documentation with clearer explanations of expected behaviors and edge cases
-
-### 2025.1.0 (2025-08-25)
-
-#### 🎉 Major Features
-- **Complete DSV Parser**: Full-featured delimited-separated value parser with support for CSV, TSV, and custom delimiters
-- **Streaming Support**: Memory-efficient streaming for large files with configurable chunk sizes
-- **Advanced Parsing Options**: Bookend removal, whitespace handling, and encoding support
-- **Header/Footer Skipping**: Skip specified numbers of rows from start or end of files
-
-#### 🛡️ Security Enhancements
-- **Path Validation System**: Comprehensive file path security validation with traversal attack prevention
-- **File Permission Checks**: Automatic file accessibility and permission validation
-- **Encoding Validation**: Robust encoding error detection and handling
-
-#### 🔧 Core Components
-- **DsvHelper**: Main DSV parsing class with parse, parses, parse_file, and parse_stream methods
-- **TextFileHelper**: Utility class for text file operations (line counting, preview, reading, streaming)
-- **PathValidator**: Security-focused path validation utilities
-- **ResourceManager**: Context managers for safe resource handling
-- **StringTokenizer**: Core string parsing functionality
-
-#### 🧪 Testing & Quality
-- **Comprehensive Test Suite**: 250+ tests with 85%+ coverage gate
-- **Cross-Platform Testing**: Tested on Windows, Linux, and macOS
-- **Type Safety**: Full type annotations throughout the codebase
-- **Error Handling**: Custom exception hierarchy with detailed error messages
-
-#### 📚 Documentation
-- **Complete API Documentation**: Google-style docstrings for all public methods
-- **Usage Examples**: Comprehensive examples for all major features
-- **Error Documentation**: Detailed error handling documentation
-
-#### 🚀 Performance
-- **Memory Efficiency**: Streaming support for large files
-- **Optimized Parsing**: Efficient string tokenization and processing
-- **Resource Management**: Automatic cleanup and resource management
+See the [CHANGELOG](CHANGELOG.md) for full release notes.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## More Documentation
+
+- Detailed docs: [docs/README-details.md](docs/README-details.md)
+- E2E testing coverage: [docs/e2e_testing_coverage.md](docs/e2e_testing_coverage.md)
 
 ## Contributing
 
