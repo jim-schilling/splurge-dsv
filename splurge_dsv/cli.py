@@ -60,7 +60,7 @@ Examples:
 
     parser.add_argument(
         "--output-format",
-        choices=["table", "json"],
+        choices=["table", "json", "ndjson"],
         default="table",
         help="Output format for results (default: table)",
     )
@@ -153,15 +153,18 @@ def run_cli() -> int:
                 total_rows += len(chunk)
                 if args.output_format == "json":
                     print(json.dumps(chunk, ensure_ascii=False))
+                elif args.output_format == "ndjson":
+                    for row in chunk:
+                        print(json.dumps(row, ensure_ascii=False))
                 else:
                     print(f"Chunk {chunk_count}: {len(chunk)} rows")
                     print_results(chunk, args.delimiter)
                     print()
 
-            if args.output_format != "json":
+            if args.output_format not in ["json", "ndjson"]:
                 print(f"Total: {total_rows} rows in {chunk_count} chunks")
         else:
-            if args.output_format != "json":
+            if args.output_format not in ["json", "ndjson"]:
                 print(f"Parsing file '{args.file_path}' with delimiter '{args.delimiter}'...")
             rows = DsvHelper.parse_file(
                 file_path,
@@ -176,6 +179,9 @@ def run_cli() -> int:
 
             if args.output_format == "json":
                 print(json.dumps(rows, ensure_ascii=False))
+            elif args.output_format == "ndjson":
+                for row in rows:
+                    print(json.dumps(row, ensure_ascii=False))
             else:
                 print(f"Parsed {len(rows)} rows")
                 print_results(rows, args.delimiter)

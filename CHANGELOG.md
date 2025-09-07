@@ -8,9 +8,8 @@ The format is based on Keep a Changelog, and the versioning follows CalVer.
 ### Changed
 - Align project with updated Cursor rules; added detailed research and plan docs.
 
-### Fixed
-- Identified upcoming fix: CLI `--version` mismatch with `pyproject.toml` (to be synced).
-- Identified upcoming feature: CLI JSON output support per CLI standards (to be implemented).
+### Added
+- CLI now supports ndjson output format for newline-delimited JSON
 
 ## 2025.1.3 - 2025-09-03
 ### Maintenance & Consistency
