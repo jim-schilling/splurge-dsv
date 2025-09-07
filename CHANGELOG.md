@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## 2025.1.5 (Patch) - 2025-09-25
+### Changed
+- Updated version to 2025.1.5.
+
+## 2025.1.5 - 2025-09-05
+### Changed
+- Align project with updated GitHub Copilot instructions.
+
 ## 2025.1.4 - 2025-09-05
 ### Changed
 - Align project with updated Cursor rules; added detailed research and plan docs.
