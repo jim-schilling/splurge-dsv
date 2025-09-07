@@ -1,5 +1,10 @@
 # splurge-dsv
 
+[![PyPI version](https://badge.fury.io/py/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
+[![Python versions](https://img.shields.io/pypi/pyversions/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+
 A robust Python library for parsing and processing delimited-separated value (DSV) files with advanced features for data validation, streaming, and error handling.
 
 ## Features
