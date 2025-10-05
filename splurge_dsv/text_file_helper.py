@@ -75,6 +75,9 @@ class TextFileHelper:
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
+        # Count lines without altering newline handling for callers; use the
+        # default newline translation (newline="") to preserve exact
+        # iteration semantics for line counting.
         with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE, newline="") as stream:
             return sum(1 for _ in stream)
 
