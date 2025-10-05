@@ -40,6 +40,9 @@ Repository = "https://github.com/jim-schilling/splurge-dsv"
 Documentation = "https://github.com/jim-schilling/splurge-dsv#readme"
 "Bug Tracker" = "https://github.com/jim-schilling/splurge-dsv/issues"
 
+[project.scripts]
+splurge-dsv = "splurge_dsv.cli:run_cli"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["splurge_dsv*"]

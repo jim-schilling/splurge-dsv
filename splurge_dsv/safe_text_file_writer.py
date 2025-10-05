@@ -7,6 +7,10 @@ writing text safely (with explicit encoding and newline normalization).
 
 This mirrors the read-only semantics in ``safe_text_file_reader.py`` but for
 writing.
+
+Copyright 2025 Jim Schilling
+Please preserve this header and all related material when sharing!
+This module is licensed under the MIT License.
 """
 
 from __future__ import annotations

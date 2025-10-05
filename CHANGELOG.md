@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
 ## 2025.2.0 - (Release Date TBD)
+### Added
+- **New DsvConfig dataclass and Dsv class**: Implemented modern, object-oriented API for DSV parsing with configuration encapsulation
+  - `DsvConfig`: Frozen dataclass with comprehensive validation for all DSV parsing parameters
+  - `Dsv`: Main parsing class that delegates to existing `DsvHelper` while providing configuration reuse
+  - Factory methods: `DsvConfig.csv()`, `DsvConfig.tsv()`, and `DsvConfig.from_params()`
+  - Type safety, immutability, and backwards compatibility maintained
+- **CLI integration**: Refactored CLI to internally use new `Dsv` class while preserving external interface
+- **Comprehensive testing**: Added 28 unit tests covering all new functionality with 100% coverage
+- **Documentation updates**: Enhanced README-details.md and created modern API examples
+
+### Changed
+- CLI now uses `Dsv` class internally for consistency while maintaining backwards compatibility
 
 ## 2025.1.5 (Patch) - 2025-09-25
 ### Changed

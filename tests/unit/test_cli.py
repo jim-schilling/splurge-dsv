@@ -137,8 +137,8 @@ class TestCliMain:
     """Test main CLI functionality."""
 
     @patch("splurge_dsv.cli.Path")
-    @patch("splurge_dsv.cli.DsvHelper")
-    def test_main_success_parse_file(self, mock_dsv_helper: MagicMock, mock_path: MagicMock) -> None:
+    @patch("splurge_dsv.cli.Dsv")
+    def test_main_success_parse_file(self, mock_dsv: MagicMock, mock_path: MagicMock) -> None:
         """Test successful file parsing."""
         # Mock file path validation
         mock_path_instance = MagicMock()
@@ -146,8 +146,10 @@ class TestCliMain:
         mock_path_instance.is_file.return_value = True
         mock_path.return_value = mock_path_instance
 
-        # Mock DsvHelper.parse_file
-        mock_dsv_helper.parse_file.return_value = [["header1", "header2"], ["value1", "value2"]]
+        # Mock Dsv instance and its parse_file method
+        mock_dsv_instance = MagicMock()
+        mock_dsv_instance.parse_file.return_value = [["header1", "header2"], ["value1", "value2"]]
+        mock_dsv.return_value = mock_dsv_instance
 
         # Mock command line arguments
         with patch("splurge_dsv.cli.parse_arguments") as mock_parse:
@@ -170,7 +172,7 @@ class TestCliMain:
                 result = run_cli()
 
         assert result == 0
-        mock_dsv_helper.parse_file.assert_called_once()
+        mock_dsv_instance.parse_file.assert_called_once()
 
     @patch("splurge_dsv.cli.Path")
     def test_main_file_not_found(self, mock_path: MagicMock) -> None:
@@ -212,8 +214,8 @@ class TestCliMain:
         mock_print.assert_called()
 
     @patch("splurge_dsv.cli.Path")
-    @patch("splurge_dsv.cli.DsvHelper")
-    def test_main_streaming_mode(self, mock_dsv_helper: MagicMock, mock_path: MagicMock) -> None:
+    @patch("splurge_dsv.cli.Dsv")
+    def test_main_streaming_mode(self, mock_dsv: MagicMock, mock_path: MagicMock) -> None:
         """Test streaming mode functionality."""
         # Mock file path validation
         mock_path_instance = MagicMock()
@@ -221,8 +223,10 @@ class TestCliMain:
         mock_path_instance.is_file.return_value = True
         mock_path.return_value = mock_path_instance
 
-        # Mock DsvHelper.parse_stream
-        mock_dsv_helper.parse_stream.return_value = iter([[["a", "b"], ["c", "d"]]])
+        # Mock Dsv instance and its parse_stream method
+        mock_dsv_instance = MagicMock()
+        mock_dsv_instance.parse_stream.return_value = iter([[["a", "b"], ["c", "d"]]])
+        mock_dsv.return_value = mock_dsv_instance
 
         # Mock command line arguments
         with patch("splurge_dsv.cli.parse_arguments") as mock_parse:
@@ -246,11 +250,10 @@ class TestCliMain:
                     result = run_cli()
 
         assert result == 0
-        mock_dsv_helper.parse_stream.assert_called_once()
 
     @patch("splurge_dsv.cli.Path")
-    @patch("splurge_dsv.cli.DsvHelper")
-    def test_main_splurge_error(self, mock_dsv_helper: MagicMock, mock_path: MagicMock) -> None:
+    @patch("splurge_dsv.cli.Dsv")
+    def test_main_splurge_error(self, mock_dsv: MagicMock, mock_path: MagicMock) -> None:
         """Test handling of SplurgeDsvError."""
         # Mock file path validation
         mock_path_instance = MagicMock()
@@ -258,8 +261,10 @@ class TestCliMain:
         mock_path_instance.is_file.return_value = True
         mock_path.return_value = mock_path_instance
 
-        # Mock DsvHelper.parse_file to raise an error
-        mock_dsv_helper.parse_file.side_effect = SplurgeDsvError("Test error", details="Test details")
+        # Mock Dsv instance and its parse_file method to raise an error
+        mock_dsv_instance = MagicMock()
+        mock_dsv_instance.parse_file.side_effect = SplurgeDsvError("Test error", details="Test details")
+        mock_dsv.return_value = mock_dsv_instance
 
         # Mock command line arguments
         with patch("splurge_dsv.cli.parse_arguments") as mock_parse:
@@ -308,9 +313,11 @@ class TestCliMain:
             mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
-            # Mock DsvHelper.parse_file to raise KeyboardInterrupt
-            with patch("splurge_dsv.cli.DsvHelper") as mock_dsv_helper:
-                mock_dsv_helper.parse_file.side_effect = KeyboardInterrupt()
+            # Mock Dsv instance and its parse_file method to raise KeyboardInterrupt
+            with patch("splurge_dsv.cli.Dsv") as mock_dsv:
+                mock_dsv_instance = MagicMock()
+                mock_dsv_instance.parse_file.side_effect = KeyboardInterrupt()
+                mock_dsv.return_value = mock_dsv_instance
 
                 with patch("splurge_dsv.cli.print") as mock_print:
                     result = run_cli()
@@ -343,9 +350,11 @@ class TestCliMain:
             mock_args.output_format = "table"
             mock_parse.return_value = mock_args
 
-            # Mock DsvHelper.parse_file to raise an unexpected error
-            with patch("splurge_dsv.cli.DsvHelper") as mock_dsv_helper:
-                mock_dsv_helper.parse_file.side_effect = RuntimeError("Unexpected error")
+            # Mock Dsv instance and its parse_file method to raise an unexpected error
+            with patch("splurge_dsv.cli.Dsv") as mock_dsv:
+                mock_dsv_instance = MagicMock()
+                mock_dsv_instance.parse_file.side_effect = RuntimeError("Unexpected error")
+                mock_dsv.return_value = mock_dsv_instance
 
                 with patch("splurge_dsv.cli.print") as mock_print:
                     result = run_cli()

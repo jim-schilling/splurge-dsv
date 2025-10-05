@@ -2,8 +2,16 @@
 
 [![PyPI version](https://badge.fury.io/py/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
 [![Python versions](https://img.shields.io/pypi/pyversions/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml/badge.svg)](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+
+> **⚠️ BREAKING CHANGES in v2025.2.0**
+>
+> - **Exception Names Changed**: All exceptions now use `SplurgeDsv*` prefix (e.g., `SplurgeParameterError` → `SplurgeDsvParameterError`)
+> - **Resource Manager Removed**: The `ResourceManager` module and all related classes have been completely removed
+>
+> See the [CHANGELOG](CHANGELOG.md) for migration guidance.
 
 A robust Python library for parsing and processing delimited-separated value (DSV) files with advanced features for data validation, streaming, and error handling.
 
@@ -29,8 +37,8 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Error Recovery**: Graceful error handling with detailed error messages
 
 ### 🧪 Testing & Quality
-- **Comprehensive Test Suite**: 250+ tests with 85%+ coverage gate
-- **Cross-Platform Support**: Tested on Windows, and should pass on Linux and macOS
+- **Comprehensive Test Suite**: 346 tests with 94% coverage
+- **Cross-Platform Support**: Tested on Windows and Linux
 - **Type Safety**: Full type annotations and validation
 - **Documentation**: Complete API documentation with examples
 
@@ -167,29 +175,24 @@ Security-focused path validation utilities.
 - `is_safe_path(file_path)` - Check if path is safe
 - `sanitize_filename(filename, default_name='file')` - Sanitize filename
 
-### ResourceManager
-
-Context managers for safe resource handling.
-
-#### Classes
-
-- `FileResourceManager` - Context manager for file operations
-- `StreamResourceManager` - Context manager for stream operations
-
-#### Functions
-
-- `safe_file_operation(file_path, mode='r', encoding='utf-8', ...)` - Safe file operation context manager
-- `safe_stream_operation(stream, auto_close=True)` - Safe stream operation context manager
-
 ## Error Handling
 
 The library provides comprehensive error handling with custom exception classes:
 
 - `SplurgeDsvParameterError` - Invalid parameter values
-- `SplurgeFileNotFoundError` - File not found
-- `SplurgeFilePermissionError` - File permission issues
-- `SplurgeFileEncodingError` - File encoding problems
-- `SplurgePathValidationError` - Path validation failures
+- `SplurgeDsvValidationError` - Data validation failures
+- `SplurgeDsvFileNotFoundError` - File not found
+- `SplurgeDsvFilePermissionError` - File permission issues
+- `SplurgeDsvFileEncodingError` - File encoding problems
+- `SplurgeDsvPathValidationError` - Path validation failures
+- `SplurgeDsvDataProcessingError` - Data processing failures
+- `SplurgeDsvParsingError` - Data parsing failures
+- `SplurgeDsvTypeConversionError` - Type conversion failures
+- `SplurgeDsvStreamingError` - Streaming operation failures
+- `SplurgeDsvConfigurationError` - Configuration validation failures
+- `SplurgeDsvResourceAcquisitionError` - Resource acquisition failures
+- `SplurgeDsvResourceReleaseError` - Resource cleanup failures
+- `SplurgeDsvPerformanceWarning` - Performance-related warnings
 
 Deterministic newline policy
 ----------------------------
