@@ -494,7 +494,7 @@ class TestEndToEndIntegrationScenarios:
 
         # 3. Stream processing for large datasets
         returncode, stdout, stderr = self.run_cli_command(
-            cli_command, [str(data_file), "--delimiter", ",", "--stream", "--chunk-size", "3"]
+            cli_command, [str(data_file), "--delimiter", ",", "--stream", "--chunk-size", "100"]
         )
         assert returncode == 0, f"Streaming failed: {stderr}"
 

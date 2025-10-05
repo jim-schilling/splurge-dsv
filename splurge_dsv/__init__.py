@@ -33,10 +33,9 @@ except Exception:
     pass
 
 # Local imports
+from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
-    SplurgeConfigurationError,
-    SplurgeDataProcessingError,
     SplurgeDsvConfigurationError,
     SplurgeDsvDataProcessingError,
     # canonical SplurgeDsv* exception names
@@ -57,23 +56,6 @@ from splurge_dsv.exceptions import (
     SplurgeDsvStreamingError,
     SplurgeDsvTypeConversionError,
     SplurgeDsvValidationError,
-    SplurgeFileEncodingError,
-    SplurgeFileNotFoundError,
-    SplurgeFileOperationError,
-    SplurgeFilePermissionError,
-    SplurgeFormatError,
-    SplurgeParameterError,
-    SplurgeParsingError,
-    SplurgePathValidationError,
-    SplurgePerformanceWarning,
-    SplurgeRangeError,
-    SplurgeResourceAcquisitionError,
-    SplurgeResourceError,
-    SplurgeResourceReleaseError,
-    SplurgeStreamingError,
-    SplurgeTypeConversionError,
-    # deprecated Splurge* aliases (kept for backward compatibility)
-    SplurgeValidationError,
 )
 from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.string_tokenizer import StringTokenizer
@@ -84,11 +66,12 @@ __author__ = "Jim Schilling"
 __license__ = "MIT"
 
 __all__ = [
-    # Main helper class
+    # Main classes
+    "Dsv",
+    "DsvConfig",
     "DsvHelper",
     # Exceptions
     "SplurgeDsvError",
-    # export new Dsv* names
     "SplurgeDsvValidationError",
     "SplurgeDsvFileOperationError",
     "SplurgeDsvFileNotFoundError",
@@ -107,28 +90,8 @@ __all__ = [
     "SplurgeDsvParameterError",
     "SplurgeDsvRangeError",
     "SplurgeDsvFormatError",
-    # keep Splurge* names available (deprecated aliases)
-    "SplurgeValidationError",
-    "SplurgeFileOperationError",
-    "SplurgeFileNotFoundError",
-    "SplurgeFilePermissionError",
-    "SplurgeFileEncodingError",
-    "SplurgePathValidationError",
-    "SplurgeDataProcessingError",
-    "SplurgeParsingError",
-    "SplurgeTypeConversionError",
-    "SplurgeStreamingError",
-    "SplurgeConfigurationError",
-    "SplurgeResourceError",
-    "SplurgeResourceAcquisitionError",
-    "SplurgeResourceReleaseError",
-    "SplurgePerformanceWarning",
-    "SplurgeParameterError",
-    "SplurgeRangeError",
-    "SplurgeFormatError",
     # Utility classes
     "StringTokenizer",
     "TextFileHelper",
-    "PathValidator",
     "PathValidator",
 ]

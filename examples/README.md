@@ -2,6 +2,35 @@
 
 This directory contains comprehensive examples demonstrating how to use the splurge-dsv library.
 
+## Modern API Example
+
+The `modern_api_example.py` file demonstrates the new object-oriented Dsv API introduced in version 2025.1.x.
+
+### Features Demonstrated
+
+- **Configuration Management**: DsvConfig dataclass with validation and factory methods
+- **Object-Oriented API**: Dsv class for encapsulated parsing operations
+- **Configuration Reuse**: Single configuration instance used across multiple operations
+- **Type Safety**: Immutable configurations with runtime validation
+- **Backwards Compatibility**: New API works alongside existing DsvHelper methods
+- **Factory Methods**: Convenient constructors for CSV and TSV formats
+
+### Running the Modern API Example
+
+From the project root directory:
+
+```bash
+# Set PYTHONPATH to include the current directory
+PYTHONPATH=. python examples/modern_api_example.py
+```
+
+On Windows:
+
+```cmd
+set PYTHONPATH=.
+python examples/modern_api_example.py
+```
+
 ## API Usage Example
 
 The `api_usage_example.py` file provides a comprehensive demonstration of all the key features of the splurge-dsv library.

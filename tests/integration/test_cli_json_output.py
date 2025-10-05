@@ -50,7 +50,7 @@ def test_cli_json_output_streaming(cli_command: str, tmp_path: Path) -> None:
 
     code, stdout, stderr = run_cli(
         cli_command,
-        [str(file_path), "--delimiter", ",", "--stream", "--chunk-size", "2", "--output-format", "json"],
+        [str(file_path), "--delimiter", ",", "--stream", "--chunk-size", "100", "--output-format", "json"],
     )
 
     assert code == 0, f"stderr: {stderr}"

@@ -2,6 +2,10 @@
 
 This module provides SafeTextFileReader which reads text files only and
 normalizes newline sequences (CRLF, CR, LF) to a predictable contract.
+
+Copyright 2025 Jim Schilling
+Please preserve this header and all related material when sharing!
+This module is licensed under the MIT License.
 """
 
 from __future__ import annotations

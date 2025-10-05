@@ -19,7 +19,7 @@ from pathlib import Path
 
 # Local imports
 from splurge_dsv import __version__
-from splurge_dsv.dsv_helper import DsvHelper
+from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.exceptions import SplurgeDsvError
 
 
@@ -131,6 +131,19 @@ def run_cli() -> int:
             print(f"Error: '{args.file_path}' is not a file.", file=sys.stderr)
             return 1
 
+        # Create configuration and Dsv instance for parsing
+        config = DsvConfig(
+            delimiter=args.delimiter,
+            strip=not args.no_strip,
+            bookend=args.bookend,
+            bookend_strip=not args.no_bookend_strip,
+            encoding=args.encoding,
+            skip_header_rows=args.skip_header,
+            skip_footer_rows=args.skip_footer,
+            chunk_size=args.chunk_size,
+        )
+        dsv = Dsv(config)
+
         # Parse the file
         if args.stream:
             if args.output_format != "json":
@@ -138,17 +151,7 @@ def run_cli() -> int:
             chunk_count = 0
             total_rows = 0
 
-            for chunk in DsvHelper.parse_stream(
-                file_path,
-                delimiter=args.delimiter,
-                strip=not args.no_strip,
-                bookend=args.bookend,
-                bookend_strip=not args.no_bookend_strip,
-                encoding=args.encoding,
-                skip_header_rows=args.skip_header,
-                skip_footer_rows=args.skip_footer,
-                chunk_size=args.chunk_size,
-            ):
+            for chunk in dsv.parse_stream(file_path):
                 chunk_count += 1
                 total_rows += len(chunk)
                 if args.output_format == "json":
@@ -166,16 +169,7 @@ def run_cli() -> int:
         else:
             if args.output_format not in ["json", "ndjson"]:
                 print(f"Parsing file '{args.file_path}' with delimiter '{args.delimiter}'...")
-            rows = DsvHelper.parse_file(
-                file_path,
-                delimiter=args.delimiter,
-                strip=not args.no_strip,
-                bookend=args.bookend,
-                bookend_strip=not args.no_bookend_strip,
-                encoding=args.encoding,
-                skip_header_rows=args.skip_header,
-                skip_footer_rows=args.skip_footer,
-            )
+            rows = dsv.parse_file(file_path)
 
             if args.output_format == "json":
                 print(json.dumps(rows, ensure_ascii=False))
