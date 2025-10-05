@@ -70,7 +70,10 @@ def _safe_open_file(
             # Binary mode
             return open(file_path, mode=mode, buffering=buffering)
         else:
-            # Text mode
+            # Text mode: open file and return handle. We avoid reading here to keep
+            # semantics consistent, but callers may perform a lightweight
+            # validation read to detect encoding issues. Return the open file
+            # handle; caller will handle UnicodeDecodeError where appropriate.
             return open(file_path, mode=mode, encoding=encoding, errors=errors, newline=newline, buffering=buffering)
     except FileNotFoundError as e:
         raise SplurgeFileNotFoundError(f"File not found: {file_path}", details=str(e)) from e
@@ -237,6 +240,37 @@ class FileResourceManager:
             newline=self.newline,
             buffering=self.buffering,
         )
+
+        # If opening in text mode for reading, attempt a small read to
+        # proactively detect Unicode decode errors (files with invalid
+        # byte sequences). Some environments may delay decode until the
+        # first read; tests expect a SplurgeFileEncodingError when the
+        # file contains invalid UTF-8. We perform a non-destructive
+        # check by reading a small chunk and then seeking back.
+        if "b" not in self.mode and "r" in self.mode:
+            # Only perform a non-destructive sample read if the file-like
+            # object supports tell() and seek(), which allows us to rewind
+            # after reading. Some file-like objects used in tests may not
+            # implement these methods; in that case, skip the proactive
+            # check to avoid interfering with those mocks.
+            if hasattr(self._file_handle, "tell") and hasattr(self._file_handle, "seek"):
+                try:
+                    # Read a small sample and then rewind to beginning.
+                    current_pos = self._file_handle.tell()
+                    _ = self._file_handle.read(64)
+                    # Return to original position so caller sees full content.
+                    self._file_handle.seek(current_pos)
+                except UnicodeDecodeError as e:
+                    # Close the file handle before raising to avoid resource leak
+                    try:
+                        self._file_handle.close()
+                    except Exception:
+                        pass
+                    self._file_handle = None
+                    raise SplurgeFileEncodingError(
+                        f"Encoding error reading file: {self.file_path}", details=str(e)
+                    ) from e
+
         return self._file_handle
 
     def __exit__(self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any | None) -> None:
