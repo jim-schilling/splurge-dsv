@@ -1,7 +1,12 @@
 name: CI - Lint and Typecheck
 
+permissions:
+  contents: read
+
 on:
   pull_request:
+    branches: ['**']
+  push:
     branches: ['**']
 
 jobs:
