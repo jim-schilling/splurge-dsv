@@ -75,7 +75,7 @@ class TextFileHelper:
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
-        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
+        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE, newline="") as stream:
             return sum(1 for _ in stream)
 
     @classmethod
@@ -124,7 +124,7 @@ class TextFileHelper:
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         lines: list[str] = []
 
-        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
+        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE, newline="") as stream:
             # Skip header rows
             for _ in range(skip_header_rows):
                 if not stream.readline():
@@ -185,7 +185,7 @@ class TextFileHelper:
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
-        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
+        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE, newline="") as stream:
             # Skip header rows
             for _ in range(skip_header_rows):
                 if not stream.readline():
@@ -229,7 +229,7 @@ class TextFileHelper:
                 chunk: list[str] = []
 
                 for line in stream:
-                    processed_line = line.strip() if strip else line.rstrip("\n")
+                    processed_line = line.strip() if strip else line.rstrip("\r\n")
                     chunk.append(processed_line)
 
                     # Yield chunk when it reaches the desired size
@@ -281,7 +281,7 @@ class TextFileHelper:
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
-        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE) as stream:
+        with safe_file_operation(validated_path, encoding=encoding, mode=cls.DEFAULT_MODE, newline="") as stream:
             for _ in range(skip_header_rows):
                 if not stream.readline():
                     return []
