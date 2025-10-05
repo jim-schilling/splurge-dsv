@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## 2025.2.0 - (Release Date TBD)
+
 ## 2025.1.5 (Patch) - 2025-09-25
 ### Changed
 - Updated version to 2025.1.5.

@@ -288,7 +288,7 @@ class TestPathValidatorIsSafePath:
         dangerous_paths = [
             "file<.txt",
             "file>.txt",
-            "file\".txt",
+            'file".txt',
             "file|.txt",
             "file?.txt",
             "file*.txt",

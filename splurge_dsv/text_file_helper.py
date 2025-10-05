@@ -289,7 +289,7 @@ class TextFileHelper:
             try:
                 if skip_footer_rows > 0:
                     # Buffer to hold the last skip_footer_rows + 1 lines
-                    buffer = deque(maxlen=skip_footer_rows + 1)
+                    buffer: deque[str] = deque(maxlen=skip_footer_rows + 1)
                     result: list[str] = []
 
                     for line in stream:
@@ -312,7 +312,8 @@ class TextFileHelper:
                     # All other lines have already been processed and added to result
                     return result
                 else:
-                    result: list[str] = []
+                    # No footer skipping required - build and return result
+                    result = []
                     for line in stream:
                         processed_line = line.strip() if strip else line.rstrip("\n")
                         result.append(processed_line)

@@ -83,9 +83,7 @@ class TestCliParseArguments:
 
     def test_parse_arguments_with_bookend(self) -> None:
         """Test argument parsing with bookend option."""
-        with patch.object(
-            sys, "argv", ["script", "test.txt", "--delimiter", "|", "--bookend", '"']
-        ):
+        with patch.object(sys, "argv", ["script", "test.txt", "--delimiter", "|", "--bookend", '"']):
             args = parse_arguments()
             assert args.bookend == '"'
 

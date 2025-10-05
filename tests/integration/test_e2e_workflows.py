@@ -541,9 +541,7 @@ P005,Tablet,500,Electronics"""
             (tsv_file, "\t"),
             (pipe_file, "|"),
         ]:
-            returncode, stdout, stderr = self.run_cli_command(
-                cli_command, [str(file_path), "--delimiter", delimiter]
-            )
+            returncode, stdout, stderr = self.run_cli_command(cli_command, [str(file_path), "--delimiter", delimiter])
             assert returncode == 0, f"Failed to parse {file_path}: {stderr}"
             assert "a" in stdout and "b" in stdout and "c" in stdout
 

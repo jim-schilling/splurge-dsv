@@ -257,7 +257,7 @@ class FileResourceManager:
                 self._file_handle = None
 
     @property
-    def file_path(self) -> Path | None:
+    def file_path(self) -> Path:
         """Get the path of the temporary file."""
         return self._file_path
 

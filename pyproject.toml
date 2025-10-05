@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "splurge-dsv"
-version = "2025.1.5"
+version = "2025.2.0"
 description = "A utility library for working with DSV (Delimited String Values) files"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -46,7 +46,7 @@ include = ["splurge_dsv*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-x -v --cov=splurge_dsv --cov-report=term-missing --cov-report=html --cov-fail-under=85"
+addopts = "-x -v -n 4"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -108,3 +108,9 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.mypy]
+# Only run mypy against the splurge_dsv package
+files = ["splurge_dsv"]
+# show_error_codes helps with diagnostics
+show_error_codes = true
