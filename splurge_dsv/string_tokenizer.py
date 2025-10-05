@@ -12,7 +12,7 @@ This module is licensed under the MIT License.
 """
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeParameterError
+from splurge_dsv.exceptions import SplurgeDsvParameterError
 
 
 class StringTokenizer:
@@ -53,7 +53,7 @@ class StringTokenizer:
             return []
 
         if delimiter is None or delimiter == "":
-            raise SplurgeParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
         if strip and not content.strip():
             return []
@@ -84,7 +84,7 @@ class StringTokenizer:
             [['a', 'b'], ['c', 'd']]
         """
         if delimiter is None or delimiter == "":
-            raise SplurgeParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
         return [cls.parse(text, delimiter=delimiter, strip=strip) for text in content]
 
@@ -109,7 +109,7 @@ class StringTokenizer:
             'hello'
         """
         if bookend is None or bookend == "":
-            raise SplurgeParameterError("bookend cannot be empty or None")
+            raise SplurgeDsvParameterError("bookend cannot be empty or None")
 
         value: str = content.strip() if strip else content
         if value.startswith(bookend) and value.endswith(bookend) and len(value) > 2 * len(bookend) - 1:

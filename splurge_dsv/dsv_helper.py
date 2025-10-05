@@ -13,7 +13,7 @@ from collections.abc import Iterator
 from os import PathLike
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeParameterError
+from splurge_dsv.exceptions import SplurgeDsvParameterError
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
 
@@ -66,7 +66,7 @@ class DsvHelper:
             ['a', 'b', 'c']
         """
         if delimiter is None or delimiter == "":
-            raise SplurgeParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
         tokens: list[str] = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
 
@@ -107,10 +107,10 @@ class DsvHelper:
             [['a', 'b', 'c'], ['d', 'e', 'f']]
         """
         if not isinstance(content, list):
-            raise SplurgeParameterError("content must be a list")
+            raise SplurgeDsvParameterError("content must be a list")
 
         if not all(isinstance(item, str) for item in content):
-            raise SplurgeParameterError("content must be a list of strings")
+            raise SplurgeDsvParameterError("content must be a list of strings")
 
         return [
             cls.parse(item, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
@@ -225,7 +225,7 @@ class DsvHelper:
             SplurgeFileEncodingError: If the file cannot be decoded with the specified encoding.
         """
         if delimiter is None or delimiter == "":
-            raise SplurgeParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
         chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)

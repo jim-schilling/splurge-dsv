@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeFileNotFoundError, SplurgeParameterError, SplurgePathValidationError
+from splurge_dsv.exceptions import SplurgeDsvParameterError, SplurgeFileNotFoundError, SplurgePathValidationError
 from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.resource_manager import (
     FileResourceManager,
@@ -310,7 +310,7 @@ def demonstrate_error_handling() -> None:
     print("✓ Parameter errors:")
     try:
         StringTokenizer.parse("test", delimiter="")  # Empty delimiter
-    except SplurgeParameterError as e:
+    except SplurgeDsvParameterError as e:
         print(f"  Caught: {e.message}")
 
 

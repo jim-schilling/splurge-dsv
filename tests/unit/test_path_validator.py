@@ -17,9 +17,9 @@ import pytest
 
 # Local imports
 from splurge_dsv.exceptions import (
-    SplurgeFileNotFoundError,
-    SplurgeFilePermissionError,
-    SplurgePathValidationError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvPathValidationError,
 )
 from splurge_dsv.path_validator import PathValidator
 
@@ -46,7 +46,7 @@ class TestPathValidatorValidatePath:
         """Test that validating non-existent file raises error when required."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             PathValidator.validate_path(test_file, must_exist=True)
 
     def test_validate_directory_as_file_raises_error(self, tmp_path: Path) -> None:
@@ -54,7 +54,7 @@ class TestPathValidatorValidatePath:
         test_dir = tmp_path / "testdir"
         test_dir.mkdir()
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(test_dir, must_be_file=True)
 
     def test_validate_relative_path_allowed(self, tmp_path: Path) -> None:
@@ -75,7 +75,7 @@ class TestPathValidatorValidatePath:
         """Test that relative path raises error when not allowed."""
         test_file = Path("relative.txt")
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(test_file, allow_relative=False)
 
     def test_validate_with_base_directory(self, tmp_path: Path) -> None:
@@ -98,7 +98,7 @@ class TestPathValidatorValidatePath:
         outside_file = tmp_path / "outside.txt"
         outside_file.write_text("test")
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(outside_file, base_directory=base_dir, must_exist=True)
 
     def test_validate_absolute_path_with_base_directory(self, tmp_path: Path) -> None:
@@ -116,7 +116,7 @@ class TestPathValidatorValidatePath:
         """Test that very long path raises error."""
         long_path = "a" * (PathValidator.MAX_PATH_LENGTH + 1)
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(long_path)
 
     def test_validate_path_with_dangerous_characters_raises_error(self) -> None:
@@ -133,7 +133,7 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in dangerous_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
     def test_validate_path_with_traversal_patterns_raises_error(self) -> None:
@@ -149,7 +149,7 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in traversal_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
     def test_validate_windows_drive_letter(self) -> None:
@@ -171,7 +171,7 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in invalid_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
     def test_validate_unreadable_file_raises_error(self, tmp_path: Path) -> None:
@@ -187,7 +187,7 @@ class TestPathValidatorValidatePath:
         os.chmod(test_file, 0o000)
 
         try:
-            with pytest.raises(SplurgeFilePermissionError):
+            with pytest.raises(SplurgeDsvFilePermissionError):
                 PathValidator.validate_path(test_file, must_be_readable=True)
         finally:
             # Restore permissions
@@ -197,7 +197,7 @@ class TestPathValidatorValidatePath:
         """Test that checking readability of non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             PathValidator.validate_path(test_file, must_be_readable=True)
 
 
@@ -383,7 +383,7 @@ class TestPathValidatorEdgeCases:
         with patch("pathlib.Path.resolve") as mock_resolve:
             mock_resolve.side_effect = RuntimeError("Resolution failed")
 
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path("test.txt")
 
     def test_validate_path_os_error(self) -> None:
@@ -391,5 +391,5 @@ class TestPathValidatorEdgeCases:
         with patch("pathlib.Path.resolve") as mock_resolve:
             mock_resolve.side_effect = OSError("OS error")
 
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path("test.txt")

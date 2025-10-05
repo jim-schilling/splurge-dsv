@@ -185,11 +185,27 @@ Context managers for safe resource handling.
 
 The library provides comprehensive error handling with custom exception classes:
 
-- `SplurgeParameterError` - Invalid parameter values
+- `SplurgeDsvParameterError` - Invalid parameter values
 - `SplurgeFileNotFoundError` - File not found
 - `SplurgeFilePermissionError` - File permission issues
 - `SplurgeFileEncodingError` - File encoding problems
 - `SplurgePathValidationError` - Path validation failures
+
+Deterministic newline policy
+----------------------------
+
+This library enforces deterministic newline handling for text files. The reader
+normalizes CRLF (`\r\n`), CR (`\r`) and LF (`\n`) to LF internally and
+returns logical lines. The writer utilities normalize any input newlines to LF
+before writing. This avoids platform-dependent differences when reading files
+produced by diverse sources.
+
+Recommended usage:
+
+- When creating files inside the project, prefer the `open_text_writer` context
+    manager or `SafeTextFileWriter` which will normalize to LF.
+- When reading unknown files, the `open_text` / `SafeTextFileReader` will
+    provide deterministic normalization regardless of the source.
 - `SplurgeResourceAcquisitionError` - Resource acquisition failures
 - `SplurgeResourceReleaseError` - Resource cleanup failures
 

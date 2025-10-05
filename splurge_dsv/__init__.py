@@ -37,7 +37,26 @@ from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
     SplurgeConfigurationError,
     SplurgeDataProcessingError,
+    SplurgeDsvConfigurationError,
+    SplurgeDsvDataProcessingError,
+    # canonical SplurgeDsv* exception names
     SplurgeDsvError,
+    SplurgeDsvFileEncodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFileOperationError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvFormatError,
+    SplurgeDsvParameterError,
+    SplurgeDsvParsingError,
+    SplurgeDsvPathValidationError,
+    SplurgeDsvPerformanceWarning,
+    SplurgeDsvRangeError,
+    SplurgeDsvResourceAcquisitionError,
+    SplurgeDsvResourceError,
+    SplurgeDsvResourceReleaseError,
+    SplurgeDsvStreamingError,
+    SplurgeDsvTypeConversionError,
+    SplurgeDsvValidationError,
     SplurgeFileEncodingError,
     SplurgeFileNotFoundError,
     SplurgeFileOperationError,
@@ -53,16 +72,10 @@ from splurge_dsv.exceptions import (
     SplurgeResourceReleaseError,
     SplurgeStreamingError,
     SplurgeTypeConversionError,
+    # deprecated Splurge* aliases (kept for backward compatibility)
     SplurgeValidationError,
 )
 from splurge_dsv.path_validator import PathValidator
-from splurge_dsv.resource_manager import (
-    FileResourceManager,
-    ResourceManager,
-    StreamResourceManager,
-    safe_file_operation,
-    safe_stream_operation,
-)
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
 
@@ -75,6 +88,26 @@ __all__ = [
     "DsvHelper",
     # Exceptions
     "SplurgeDsvError",
+    # export new Dsv* names
+    "SplurgeDsvValidationError",
+    "SplurgeDsvFileOperationError",
+    "SplurgeDsvFileNotFoundError",
+    "SplurgeDsvFilePermissionError",
+    "SplurgeDsvFileEncodingError",
+    "SplurgeDsvPathValidationError",
+    "SplurgeDsvDataProcessingError",
+    "SplurgeDsvParsingError",
+    "SplurgeDsvTypeConversionError",
+    "SplurgeDsvStreamingError",
+    "SplurgeDsvConfigurationError",
+    "SplurgeDsvResourceError",
+    "SplurgeDsvResourceAcquisitionError",
+    "SplurgeDsvResourceReleaseError",
+    "SplurgeDsvPerformanceWarning",
+    "SplurgeDsvParameterError",
+    "SplurgeDsvRangeError",
+    "SplurgeDsvFormatError",
+    # keep Splurge* names available (deprecated aliases)
     "SplurgeValidationError",
     "SplurgeFileOperationError",
     "SplurgeFileNotFoundError",
@@ -97,10 +130,5 @@ __all__ = [
     "StringTokenizer",
     "TextFileHelper",
     "PathValidator",
-    "ResourceManager",
-    "FileResourceManager",
-    "StreamResourceManager",
-    # Context managers
-    "safe_file_operation",
-    "safe_stream_operation",
+    "PathValidator",
 ]

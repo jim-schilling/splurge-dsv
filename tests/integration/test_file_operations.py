@@ -16,10 +16,10 @@ import pytest
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
-    SplurgeFileEncodingError,
-    SplurgeFileNotFoundError,
-    SplurgeFilePermissionError,
-    SplurgeParameterError,
+    SplurgeDsvFileEncodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvParameterError,
 )
 
 
@@ -120,7 +120,7 @@ class TestFileParsingIntegration:
         """Test that parsing non-existent file raises error."""
         test_file = tmp_path / "nonexistent.csv"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             DsvHelper.parse_file(test_file, delimiter=",")
 
     def test_parse_file_with_empty_delimiter_raises_error(self, tmp_path: Path) -> None:
@@ -128,7 +128,7 @@ class TestFileParsingIntegration:
         test_file = tmp_path / "test.csv"
         test_file.write_text("a,b,c")
 
-        with pytest.raises(SplurgeParameterError, match="delimiter cannot be empty or None"):
+        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
             DsvHelper.parse_file(test_file, delimiter="")
 
 
@@ -174,7 +174,7 @@ class TestFileStreamingIntegration:
         """Test that streaming non-existent file raises error."""
         test_file = tmp_path / "nonexistent.csv"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             list(DsvHelper.parse_stream(test_file, delimiter=","))
 
 
@@ -227,7 +227,7 @@ class TestFileEncodingIntegration:
         # Write binary data that's not valid UTF-8
         test_file.write_bytes(b"a,b,c\nd,e,\xff\nf,g,h")
 
-        with pytest.raises(SplurgeFileEncodingError):
+        with pytest.raises(SplurgeDsvFileEncodingError):
             DsvHelper.parse_file(test_file, delimiter=",")
 
     def test_parse_file_with_permission_error(self, tmp_path: Path) -> None:
@@ -243,7 +243,7 @@ class TestFileEncodingIntegration:
         os.chmod(test_file, 0o000)
 
         try:
-            with pytest.raises(SplurgeFilePermissionError):
+            with pytest.raises(SplurgeDsvFilePermissionError):
                 DsvHelper.parse_file(test_file, delimiter=",")
         finally:
             # Restore permissions

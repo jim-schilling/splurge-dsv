@@ -17,7 +17,11 @@ import re
 from pathlib import Path
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeFileNotFoundError, SplurgeFilePermissionError, SplurgePathValidationError
+from splurge_dsv.exceptions import (
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvPathValidationError,
+)
 
 # Module-level constants for path validation
 _MAX_PATH_LENGTH = 4096  # Maximum path length for most filesystems
@@ -109,9 +113,9 @@ class PathValidator:
             Normalized Path object
 
         Raises:
-            SplurgePathValidationError: If path validation fails
-            SplurgeFileNotFoundError: If file doesn't exist when required
-            SplurgeFilePermissionError: If file is not readable when required
+            SplurgeDsvPathValidationError: If path validation fails
+            SplurgeDsvFileNotFoundError: If file doesn't exist when required
+            SplurgeDsvFilePermissionError: If file is not readable when required
         """
         # Convert to Path object
         path = Path(file_path) if isinstance(file_path, str) else file_path
@@ -130,7 +134,7 @@ class PathValidator:
 
         # Handle relative paths
         if not path.is_absolute() and not allow_relative:
-            raise SplurgePathValidationError(
+            raise SplurgeDsvPathValidationError(
                 f"Relative paths are not allowed: {path}", details="Set allow_relative=True to allow relative paths"
             )
 
@@ -147,39 +151,39 @@ class PathValidator:
                 try:
                     resolved_path.relative_to(base_path)
                 except ValueError:
-                    raise SplurgePathValidationError(
+                    raise SplurgeDsvPathValidationError(
                         f"Path {path} resolves outside base directory {base_directory}",
                         details="Path traversal detected",
                     ) from None
             else:
                 resolved_path = path.resolve()
         except (OSError, RuntimeError) as e:
-            raise SplurgePathValidationError(
+            raise SplurgeDsvPathValidationError(
                 f"Failed to resolve path {path}: {e}", details="Check if path contains invalid characters or symlinks"
             ) from e
 
         # Check if file exists
         if must_exist and not resolved_path.exists():
-            raise SplurgeFileNotFoundError(
+            raise SplurgeDsvFileNotFoundError(
                 f"File does not exist: {resolved_path}", details="Set must_exist=False to allow non-existent files"
             )
 
         # Check if it's a file (not directory)
         if must_be_file and resolved_path.exists() and not resolved_path.is_file():
-            raise SplurgePathValidationError(
+            raise SplurgeDsvPathValidationError(
                 f"Path is not a file: {resolved_path}", details="Path exists but is not a regular file"
             )
 
         # Check if file is readable
         if must_be_readable:
             if not resolved_path.exists():
-                raise SplurgeFileNotFoundError(
+                raise SplurgeDsvFileNotFoundError(
                     f"Cannot check readability of non-existent file: {resolved_path}",
                     details="File must exist to check readability",
                 )
 
             if not os.access(resolved_path, os.R_OK):
-                raise SplurgeFilePermissionError(
+                raise SplurgeDsvFilePermissionError(
                     f"File is not readable: {resolved_path}", details="Check file permissions"
                 )
 
@@ -206,7 +210,7 @@ class PathValidator:
         # Check for dangerous characters, but allow colons in Windows drive letters
         for char in cls._DANGEROUS_CHARS:
             if char in path_str:
-                raise SplurgePathValidationError(
+                raise SplurgeDsvPathValidationError(
                     f"Path contains dangerous character: {repr(char)}",
                     details=f"Character at position {path_str.find(char)}",
                 )
@@ -214,7 +218,7 @@ class PathValidator:
         # Special handling for colons - only allow them in Windows drive letters (e.g., C:)
         if ":" in path_str:
             if not cls._is_valid_windows_drive_pattern(path_str):
-                raise SplurgePathValidationError(
+                raise SplurgeDsvPathValidationError(
                     "Path contains colon in invalid position",
                     details="Colons are only allowed in Windows drive letters (e.g., C: or C:\\)",
                 )
@@ -224,7 +228,7 @@ class PathValidator:
         """Check for path traversal patterns."""
         for pattern in cls._PATH_TRAVERSAL_PATTERNS:
             if re.search(pattern, path_str):
-                raise SplurgePathValidationError(
+                raise SplurgeDsvPathValidationError(
                     f"Path contains traversal pattern: {pattern}", details="Path traversal attacks are not allowed"
                 )
 
@@ -232,7 +236,7 @@ class PathValidator:
     def _check_path_length(cls, path_str: str) -> None:
         """Check if path length is within acceptable limits."""
         if len(path_str) > cls.MAX_PATH_LENGTH:
-            raise SplurgePathValidationError(
+            raise SplurgeDsvPathValidationError(
                 f"Path is too long: {len(path_str)} characters",
                 details=f"Maximum allowed length is {cls.MAX_PATH_LENGTH} characters",
             )
@@ -281,5 +285,5 @@ class PathValidator:
         try:
             cls.validate_path(file_path)
             return True
-        except (SplurgePathValidationError, SplurgeFileNotFoundError, SplurgeFilePermissionError):
+        except (SplurgeDsvPathValidationError, SplurgeDsvFileNotFoundError, SplurgeDsvFilePermissionError):
             return False
