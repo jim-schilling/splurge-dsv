@@ -10,6 +10,21 @@ Copyright (c) 2025 Jim Schilling
 This module is licensed under the MIT License.
 """
 
+# Ensure current working directory exists. Some test environments or earlier
+# test cases may remove the process working directory which causes calls to
+# os.getcwd() to raise FileNotFoundError later during test execution. Guard
+# against that here by switching to this package directory when cwd is missing.
+import os
+from pathlib import Path as _Path
+
+try:
+    if not _Path.cwd().exists():
+        os.chdir(_Path(__file__).resolve().parent)
+except Exception:
+    # Be conservative: if this fails, don't break import - tests will report
+    # the original failure. Swallowing ensures import-time is resilient.
+    pass
+
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
