@@ -18,7 +18,14 @@ import os
 from pathlib import Path as _Path
 
 try:
-    if not _Path.cwd().exists():
+    try:
+        # os.getcwd() can raise FileNotFoundError in CI/runner environments
+        # if the original working directory was removed. Check existence via
+        # Path.cwd(); if it doesn't exist, switch to the package directory.
+        if not _Path.cwd().exists():
+            os.chdir(_Path(__file__).resolve().parent)
+    except FileNotFoundError:
+        # Fall back to package directory when cwd is gone
         os.chdir(_Path(__file__).resolve().parent)
 except Exception:
     # Be conservative: if this fails, don't break import - tests will report
