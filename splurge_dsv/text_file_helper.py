@@ -135,7 +135,7 @@ class TextFileHelper:
                 line = stream.readline()
                 if not line:
                     break
-                lines.append(line.strip() if strip else line.rstrip("\n"))
+                lines.append(line.strip() if strip else line.rstrip("\r\n"))
 
         return lines
 
@@ -198,7 +198,7 @@ class TextFileHelper:
                 current_chunk: list[str] = []
 
                 for line in stream:
-                    processed_line = line.strip() if strip else line.rstrip("\n")
+                    processed_line = line.strip() if strip else line.rstrip("\r\n")
 
                     # Add current line to buffer
                     buffer.append(processed_line)
@@ -293,7 +293,7 @@ class TextFileHelper:
                     result: list[str] = []
 
                     for line in stream:
-                        processed_line = line.strip() if strip else line.rstrip("\n")
+                        processed_line = line.strip() if strip else line.rstrip("\r\n")
 
                         # Add current line to buffer
                         buffer.append(processed_line)
@@ -315,7 +315,7 @@ class TextFileHelper:
                     # No footer skipping required - build and return result
                     result = []
                     for line in stream:
-                        processed_line = line.strip() if strip else line.rstrip("\n")
+                        processed_line = line.strip() if strip else line.rstrip("\r\n")
                         result.append(processed_line)
                     return result
             except UnicodeDecodeError as e:
