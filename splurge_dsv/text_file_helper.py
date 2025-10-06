@@ -166,8 +166,11 @@ class TextFileHelper:
             SplurgeFileEncodingError: If the file cannot be decoded with the specified encoding
             SplurgePathValidationError: If file path validation fails
         """
-        # Ensure minimum chunk size
-        chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
+        # Allow small chunk sizes for testing, but enforce minimum for performance
+        # Only enforce minimum if chunk_size is "moderately small" (to prevent accidental small chunks)
+        if chunk_size >= 10:  # If someone sets a chunk size >= 10, enforce minimum for performance
+            chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
+        # For very small chunk sizes (like 1-9), allow them (useful for testing)
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 

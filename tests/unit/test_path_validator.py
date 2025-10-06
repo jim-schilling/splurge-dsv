@@ -10,7 +10,6 @@ import os
 import platform
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 # Third-party imports
 import pytest
@@ -152,13 +151,13 @@ class TestPathValidatorValidatePath:
             with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
-    def test_validate_windows_drive_letter(self) -> None:
+    def test_validate_windows_drive_letter(self, mocker) -> None:
         """Test validating Windows drive letter path."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.return_value = Path("C:/test/file.txt")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.return_value = Path("C:/test/file.txt")
 
-            result = PathValidator.validate_path("C:/test/file.txt")
-            assert result == Path("C:/test/file.txt")
+        result = PathValidator.validate_path("C:/test/file.txt")
+        assert result == Path("C:/test/file.txt")
 
     def test_validate_invalid_colon_usage_raises_error(self) -> None:
         """Test that invalid colon usage raises error."""
@@ -378,18 +377,18 @@ class TestPathValidatorEdgeCases:
         result = PathValidator.sanitize_filename("αβγ<file>name:with|invalid?.txt")
         assert result == "αβγ_file_name_with_invalid_.txt"
 
-    def test_validate_path_resolution_error(self) -> None:
+    def test_validate_path_resolution_error(self, mocker) -> None:
         """Test handling of path resolution errors."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.side_effect = RuntimeError("Resolution failed")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.side_effect = RuntimeError("Resolution failed")
 
-            with pytest.raises(SplurgeDsvPathValidationError):
-                PathValidator.validate_path("test.txt")
+        with pytest.raises(SplurgeDsvPathValidationError):
+            PathValidator.validate_path("test.txt")
 
-    def test_validate_path_os_error(self) -> None:
+    def test_validate_path_os_error(self, mocker) -> None:
         """Test handling of OS errors during validation."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.side_effect = OSError("OS error")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.side_effect = OSError("OS error")
 
-            with pytest.raises(SplurgeDsvPathValidationError):
-                PathValidator.validate_path("test.txt")
+        with pytest.raises(SplurgeDsvPathValidationError):
+            PathValidator.validate_path("test.txt")
