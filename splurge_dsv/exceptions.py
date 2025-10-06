@@ -12,7 +12,6 @@ This module is licensed under the MIT License.
 """
 
 
-
 class SplurgeDsvError(Exception):
     """Base exception for all splurge-dsv errors."""
 
