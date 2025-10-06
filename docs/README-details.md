@@ -156,6 +156,12 @@ This project uses `pytest` with a coverage gate (>=94%).
 pytest -x -v --cov=splurge_dsv --cov-report=term-missing --cov-report=html
 ```
 
+The test suite includes:
+- **Unit Tests**: 300+ tests covering all core functionality, CLI, and error handling
+- **Integration Tests**: End-to-end workflows, file operations, and CLI integration
+- **Property-Based Tests**: Hypothesis-driven tests for invariant verification across string_tokenizer, dsv_helper, path_validator, and text_file_helper modules
+- **Edge Case Tests**: Comprehensive coverage of malformed CSV structures, encoding edge cases (UTF-8/16, BOM handling), and filesystem edge cases (concurrent access, file modifications during operations)
+
 See `docs/e2e_testing_coverage.md` for integration and end-to-end coverage notes.
 
 ## Versioning

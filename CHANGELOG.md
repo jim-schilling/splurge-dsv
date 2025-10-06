@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and the versioning follows CalVer.
 
 ## 2025.2.0 - (Release Date TBD)
 ### Added
+- **Comprehensive Property-Based Testing**: Added Hypothesis framework tests for invariant verification
+  - `test_string_tokenizer_properties.py`: 6 tests covering parsing consistency and edge cases
+  - `test_dsv_helper_properties.py`: 2 tests covering token count preservation and file round-trip
+  - `test_path_validator_properties.py`: 10 tests covering path normalization and security validation
+  - `test_text_file_helper_properties.py`: 6 tests covering streaming and encoding consistency
+- **Malformed Input Testing**: Added comprehensive edge case testing for CSV parsing robustness
+  - `test_malformed_csv.py`: 13 tests covering quote handling issues, nested quotes, escaped quotes, and delimiter conflicts
+- **Encoding Edge Cases Testing**: Added thorough testing for encoding and BOM handling
+  - `test_encoding_edge_cases.py`: 9 tests covering UTF-8/16 sequences, BOM detection, and encoding mismatches
+- **Filesystem Edge Cases Testing**: Added testing for file system anomalies and concurrent operations
+  - `test_filesystem_edge_cases.py`: 10 tests covering concurrent reads, file modifications during streaming, and permission scenarios
+- **Enhanced Test Coverage**: Achieved 94% code coverage with 396 passing tests (11 skipped for platform-specific scenarios)
+
+### Changed
+- **Streaming Logic Improvements**: Fixed chunking behavior in `SafeTextFileReader.read_as_stream()` to properly handle small chunk sizes for testing
+- **Test Infrastructure**: Updated test expectations and property test constraints to handle edge cases and improve reliability
+
+### Added
 - **New DsvConfig dataclass and Dsv class**: Implemented modern, object-oriented API for DSV parsing with configuration encapsulation
   - `DsvConfig`: Frozen dataclass with comprehensive validation for all DSV parsing parameters
   - `Dsv`: Main parsing class that delegates to existing `DsvHelper` while providing configuration reuse
