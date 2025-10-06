@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
 [![Python versions](https://img.shields.io/pypi/pyversions/splurge-dsv.svg)](https://pypi.org/project/splurge-dsv/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 [![CI](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml/badge.svg)](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -17,7 +18,14 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Security & Validation**: Comprehensive path validation and file permission checks
 - **Unicode Support**: Full Unicode character and encoding support
 - **Type Safety**: Full type annotations with mypy validation
-- **Comprehensive Testing**: 396 tests with 94% code coverage
+- **Comprehensive Testing**: 420 tests (409 passed, 11 skipped) with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility
+
+**⚠️ BREAKING CHANGES in v2025.2.0**
+>
+> - **Exception Names Changed**: All exceptions now use `SplurgeDsv*` prefix (e.g., `SplurgeParameterError` → `SplurgeDsvParameterError`)
+> - **Resource Manager Removed**: The `ResourceManager` module and all related classes have been completely removed
+>
+> See the [CHANGELOG](CHANGELOG.md) for migration guidance.
 
 ## Installation
 
@@ -66,6 +74,8 @@ rows = dsv.parse_file("data.csv")
 ## Documentation
 
 - **[Detailed Documentation](docs/README-details.md)**: Complete API reference, CLI options, and examples
+- **[Testing Best Practices](docs/testing_best_practices.md)**: Comprehensive testing guidelines and patterns
+- **[Hypothesis Usage Patterns](docs/hypothesis_usage_patterns.md)**: Property-based testing guide
 - **[Changelog](CHANGELOG.md)**: Release notes and migration guides
 
 ## License
@@ -90,18 +100,51 @@ Recommended usage:
 
 ## Development
 
-### Running Tests
+### Testing Suite
+
+splurge-dsv features a comprehensive testing suite designed for robustness and reliability:
+
+#### Test Categories
+- **Unit Tests**: Core functionality testing (300+ tests)
+- **Integration Tests**: End-to-end workflow validation (50+ tests)
+- **Property-Based Tests**: Hypothesis-driven testing for edge cases (50+ tests)
+- **Edge Case Tests**: Malformed input, encoding issues, filesystem anomalies
+- **Cross-Platform Tests**: Path handling, line endings, encoding consistency
+
+#### Running Tests
 
 ```bash
 # Run all tests
 pytest tests/ -v
 
-# Run with coverage
+# Run with coverage report
 pytest tests/ --cov=splurge_dsv --cov-report=html
 
-# Run specific test file
-pytest tests/test_dsv_helper.py -v
+# Run specific test categories
+pytest tests/unit/ -v                    # Unit tests only
+pytest tests/integration/ -v            # Integration tests only
+pytest tests/property/ -v               # Property-based tests only
+pytest tests/platform/ -v               # Cross-platform tests only
+
+# Run with parallel execution
+pytest tests/ -n 4 --cov=splurge_dsv
+
+# Run performance benchmarks
+pytest tests/ --durations=10
 ```
+
+#### Test Quality Standards
+- **94%+ Code Coverage**: All public APIs and critical paths covered
+- **Property-Based Testing**: Hypothesis framework validates complex scenarios
+- **Cross-Platform Compatibility**: Tests run on Windows, Linux, and macOS
+- **Performance Regression Detection**: Automated benchmarks prevent slowdowns
+- **Zero False Positives**: All property tests pass without spurious failures
+
+#### Testing Best Practices
+- Tests use `pytest-mock` for modern mocking patterns
+- Property tests use Hypothesis strategies for comprehensive input generation
+- Edge case tests validate error handling and boundary conditions
+- Cross-platform tests ensure consistent behavior across operating systems
 
 ### Code Quality
 
@@ -127,7 +170,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
+
+- Development setup and workflow
+- Coding standards and best practices
+- Testing requirements and guidelines
+- Pull request process and review criteria
+
+For major changes, please open an issue first to discuss what you would like to change.
 
 ## Support
 

@@ -1,14 +1,19 @@
-"""
-DSV (Delimited String Values) parsing with configuration objects.
+"""DSV parsing primitives and configuration objects.
 
-This module provides a modern, object-oriented API for DSV parsing using
-configuration dataclasses for better type safety and reusability.
+This module exposes the :class:`DsvConfig` dataclass and the :class:`Dsv`
+parser. ``DsvConfig`` encapsulates parsing options such as delimiter,
+encoding and header/footer skipping. ``Dsv`` is a thin, stateful wrapper
+around :mod:`splurge_dsv.dsv_helper` that binds a configuration to
+parsing operations and provides convenience methods for parsing strings,
+files, and streaming large inputs.
+
+Public API:
+    - DsvConfig: Configuration dataclass for parsing behavior.
+    - Dsv: Parser instance that performs parse/parse_file/parse_stream.
+
+License: MIT
 
 Copyright (c) 2025 Jim Schilling
-
-This module is licensed under the MIT License.
-
-Please preserve this header and all related material when sharing!
 """
 
 # Standard library imports
@@ -23,21 +28,24 @@ from splurge_dsv.exceptions import SplurgeDsvParameterError
 
 @dataclass(frozen=True)
 class DsvConfig:
-    """
-    Configuration for DSV parsing operations.
+    """Configuration for DSV parsing operations.
 
-    This frozen dataclass encapsulates all configuration parameters for DSV parsing,
-    providing type safety, validation, and convenient factory methods.
+    This frozen dataclass stores parsing options and performs basic
+    validation in :meth:`__post_init__`.
 
-    Attributes:
-        delimiter: The delimiter character used to separate values
-        strip: Whether to strip whitespace from parsed values
-        bookend: Optional character that wraps text fields (e.g., quotes)
-        bookend_strip: Whether to strip whitespace from bookend characters
-        encoding: Text encoding for file operations
-        skip_header_rows: Number of header rows to skip when reading files
-        skip_footer_rows: Number of footer rows to skip when reading files
-        chunk_size: Size of chunks for streaming operations
+    Args:
+        delimiter: The delimiter character used to separate values.
+        strip: Whether to strip whitespace from parsed values.
+        bookend: Optional character that wraps text fields (e.g., quotes).
+        bookend_strip: Whether to strip whitespace from bookend characters.
+        encoding: Text encoding for file operations.
+        skip_header_rows: Number of header rows to skip when reading files.
+        skip_footer_rows: Number of footer rows to skip when reading files.
+        chunk_size: Size of chunks for streaming operations.
+
+    Raises:
+        SplurgeDsvParameterError: If delimiter is empty, chunk_size is too
+            small, or skip counts are negative.
     """
 
     delimiter: str
@@ -50,7 +58,10 @@ class DsvConfig:
     chunk_size: int = 500
 
     def __post_init__(self) -> None:
-        """Validate configuration after initialization."""
+        """Validate configuration after initialization.
+
+        Ensures required fields are present and numeric ranges are valid.
+        """
         if not self.delimiter:
             raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
@@ -127,14 +138,14 @@ class DsvConfig:
 
 
 class Dsv:
-    """
-    DSV parser with encapsulated configuration.
+    """Parser class that binds a :class:`DsvConfig` to parsing operations.
 
-    This class provides an object-oriented interface for DSV parsing operations,
-    encapsulating configuration to enable reuse across multiple parsing operations.
+    The class delegates actual parsing to :mod:`splurge_dsv.dsv_helper` while
+    providing a convenient instance API for repeated parsing tasks with the
+    same configuration.
 
     Attributes:
-        config: The DsvConfig object containing parsing configuration
+        config (DsvConfig): Configuration instance used for parsing calls.
     """
 
     def __init__(self, config: DsvConfig) -> None:
@@ -151,19 +162,16 @@ class Dsv:
         self.config = config
 
     def parse(self, content: str) -> list[str]:
-        """
-        Parse a string into a list of strings.
+        """Parse a single DSV record (string) into a list of tokens.
 
         Args:
-            content: The string to parse
+            content: Input string representing a single DSV record.
 
         Returns:
-            List of parsed strings
+            List of parsed tokens as strings.
 
-        Example:
-            >>> parser = Dsv(DsvConfig(delimiter=","))
-            >>> parser.parse("a,b,c")
-            ['a', 'b', 'c']
+        Raises:
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
         """
         return DsvHelper.parse(
             content,
@@ -197,18 +205,19 @@ class Dsv:
         )
 
     def parse_file(self, file_path: PathLike[str] | str) -> list[list[str]]:
-        """
-        Parse a file into a list of lists of strings.
+        """Parse a DSV file and return all rows as lists of strings.
 
         Args:
-            file_path: Path to the file to parse
+            file_path: Path to the file to parse.
 
         Returns:
-            List of lists of parsed strings
+            A list of rows, where each row is a list of string tokens.
 
-        Example:
-            >>> parser = Dsv(DsvConfig.csv())
-            >>> rows = parser.parse_file("data.csv")
+        Raises:
+            SplurgeDsvFileNotFoundError: If the file cannot be found.
+            SplurgeDsvFilePermissionError: If the file cannot be read.
+            SplurgeDsvFileEncodingError: If the file cannot be decoded with
+                the configured encoding.
         """
         return DsvHelper.parse_file(
             file_path,
@@ -222,19 +231,17 @@ class Dsv:
         )
 
     def parse_stream(self, file_path: PathLike[str] | str) -> Iterator[list[list[str]]]:
-        """
-        Stream-parse a file in chunks.
+        """Stream-parse a DSV file, yielding chunks of parsed rows.
+
+        The method yields lists of parsed rows (each row itself is a list of
+        strings). Chunk sizing is controlled by the bound configuration's
+        ``chunk_size`` value.
 
         Args:
-            file_path: Path to the file to parse
+            file_path: Path to the file to parse.
 
         Yields:
-            Chunks of parsed rows
-
-        Example:
-            >>> parser = Dsv(DsvConfig.csv())
-            >>> for chunk in parser.parse_stream("large.csv"):
-            ...     process_chunk(chunk)
+            Lists of parsed rows, each list containing up to ``chunk_size`` rows.
         """
         return DsvHelper.parse_stream(
             file_path,

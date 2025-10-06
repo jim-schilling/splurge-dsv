@@ -1,13 +1,12 @@
-"""
-Splurge DSV - A utility library for working with DSV (Delimited String Values) files.
+"""Top-level package for Splurge DSV.
 
-This package provides utilities for parsing, processing, and manipulating
-delimited string value files with support for various delimiters, text bookends,
-and streaming operations.
+This package provides utilities for parsing, processing and manipulating
+delimited string value (DSV) files. It exposes the high-level API objects
+such as :class:`~splurge_dsv.dsv.Dsv` and :class:`~splurge_dsv.dsv.DsvConfig`,
+convenience helpers, and the package's exception types.
 
+License: MIT
 Copyright (c) 2025 Jim Schilling
-
-This module is licensed under the MIT License.
 """
 
 # Ensure current working directory exists. Some test environments or earlier

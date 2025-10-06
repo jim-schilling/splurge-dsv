@@ -29,21 +29,24 @@ class StringTokenizer:
 
     @staticmethod
     def parse(content: str | None, *, delimiter: str, strip: bool = DEFAULT_STRIP) -> list[str]:
-        """
-        Split a string into tokens based on a delimiter.
+        """Tokenize a single string using ``delimiter``.
+
+        The function preserves empty tokens (e.g. ``"a,,c"`` with
+        delimiter ``","`` yields ``['a', '', 'c']``). If ``content`` is
+        None an empty list is returned.
 
         Args:
-            content (str | None): The input string to tokenize
-            delimiter (str): The character(s) to split the string on
-            strip (bool, optional): Whether to strip whitespace from tokens. Defaults to True.
+            content: The input string to tokenize, or ``None``.
+            delimiter: The delimiter string to split on.
+            strip: If True, strip leading/trailing whitespace from each token.
 
         Returns:
-            list[str]: List of tokens, preserving empty tokens
+            A list of tokens. Empty tokens are preserved.
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None
+            SplurgeDsvParameterError: If ``delimiter`` is empty or ``None``.
 
-        Example:
+        Examples:
             >>> StringTokenizer.parse("a,b,c", delimiter=",")
             ['a', 'b', 'c']
             >>> StringTokenizer.parse("a,,c", delimiter=",")
@@ -65,19 +68,19 @@ class StringTokenizer:
 
     @classmethod
     def parses(cls, content: list[str], *, delimiter: str, strip: bool = DEFAULT_STRIP) -> list[list[str]]:
-        """
-        Process multiple strings into lists of tokens.
+        """Tokenize multiple strings.
 
         Args:
-            content (list[str]): List of strings to tokenize
-            delimiter (str): The character(s) to split each string on
-            strip (bool, optional): Whether to strip whitespace from tokens. Defaults to True.
+            content: A list of strings to tokenize.
+            delimiter: The delimiter to use for splitting.
+            strip: If True, strip whitespace from tokens.
 
         Returns:
-            list[list[str]]: List of token lists, one for each input string
+            A list where each element is the token list for the corresponding
+            input string.
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None
+            SplurgeDsvParameterError: If ``delimiter`` is empty or ``None``.
 
         Example:
             >>> StringTokenizer.parses(["a,b", "c,d"], delimiter=",")
@@ -90,19 +93,24 @@ class StringTokenizer:
 
     @staticmethod
     def remove_bookends(content: str, *, bookend: str, strip: bool = DEFAULT_STRIP) -> str:
-        """
-        Remove matching characters from both ends of a string.
+        """Remove matching bookend characters from both endpoints of ``content``.
+
+        The function optionally strips surrounding whitespace before checking
+        for matching bookend characters. If both ends match the provided
+        ``bookend`` and the remaining content is long enough, the bookends are
+        removed; otherwise the possibly-stripped input is returned unchanged.
 
         Args:
-            content (str): The input string to process
-            bookend (str): The character(s) to remove from both ends
-            strip (bool, optional): Whether to strip whitespace first. Defaults to True.
+            content: The input string to process.
+            bookend: The bookend string to remove from both ends (e.g. '"').
+            strip: If True, strip whitespace prior to bookend removal.
 
         Returns:
-            str: The string with matching bookends removed
+            The input string with matching bookend characters removed when
+            applicable.
 
         Raises:
-            SplurgeParameterError: If bookend is empty or None
+            SplurgeDsvParameterError: If ``bookend`` is empty or ``None``.
 
         Example:
             >>> StringTokenizer.remove_bookends("'hello'", bookend="'")

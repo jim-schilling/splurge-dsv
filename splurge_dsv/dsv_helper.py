@@ -43,23 +43,27 @@ class DsvHelper:
         bookend: str | None = None,
         bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[str]:
-        """
-        Parse a string into a list of strings.
+        """Parse a single DSV line into tokens.
+
+        This method tokenizes a single line of DSV text using the provided
+        ``delimiter``. It optionally strips surrounding whitespace from each
+        token and may remove configured bookend characters (for example,
+        double-quotes used around fields).
 
         Args:
-            content (str): The string to parse.
-            delimiter (str): The delimiter to use.
-            strip (bool): Whether to strip whitespace from the strings.
-            bookend (str | None): The bookend to use for text fields.
-            bookend_strip (bool): Whether to strip whitespace from the bookend.
+            content: The input line to tokenize.
+            delimiter: A single-character delimiter string (e.g. "," or "\t").
+            strip: If True, strip leading/trailing whitespace from each token.
+            bookend: Optional bookend character to remove from token ends.
+            bookend_strip: If True, strip whitespace after removing bookends.
 
         Returns:
-            list[str]: The list of strings.
+            A list of parsed token strings.
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None.
+            SplurgeDsvParameterError: If ``delimiter`` is empty or None.
 
-        Example:
+        Examples:
             >>> DsvHelper.parse("a,b,c", delimiter=",")
             ['a', 'b', 'c']
             >>> DsvHelper.parse('"a","b","c"', delimiter=",", bookend='"')
@@ -85,22 +89,24 @@ class DsvHelper:
         bookend: str | None = None,
         bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[list[str]]:
-        """
-        Parse a list of strings into a list of lists of strings.
+        """Parse multiple DSV lines.
+
+        Given a list of lines (for example, the result of reading a file),
+        return a list where each element is the list of tokens for that line.
 
         Args:
-            content (list[str]): The list of strings to parse.
-            delimiter (str): The delimiter to use.
-            strip (bool): Whether to strip whitespace from the strings.
-            bookend (str | None): The bookend to use for text fields.
-            bookend_strip (bool): Whether to strip whitespace from the bookend.
+            content: A list of input lines to parse.
+            delimiter: Delimiter used to split each line.
+            strip: If True, strip whitespace from tokens.
+            bookend: Optional bookend character to remove from tokens.
+            bookend_strip: If True, strip whitespace after removing bookends.
 
         Returns:
-            list[list[str]]: The list of lists of strings.
+            A list of token lists, one per input line.
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None.
-            SplurgeParameterError: If content is not a list of strings.
+            SplurgeDsvParameterError: If ``content`` is not a list of strings or
+                if ``delimiter`` is empty or None.
 
         Example:
             >>> DsvHelper.parses(["a,b,c", "d,e,f"], delimiter=",")
@@ -130,31 +136,33 @@ class DsvHelper:
         skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
         skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
     ) -> list[list[str]]:
-        """
-        Parse a file into a list of lists of strings.
+        """Read and parse an entire DSV file.
+
+        This convenience reads all lines from ``file_path`` using
+        :class:`splurge_dsv.text_file_helper.TextFileHelper` and then parses each
+        line into tokens. Header and footer rows may be skipped via the
+        ``skip_header_rows`` and ``skip_footer_rows`` parameters.
 
         Args:
-            file_path (PathLike[str] | str): The path to the file to parse.
-            delimiter (str): The delimiter to use.
-            strip (bool): Whether to strip whitespace from the strings.
-            bookend (str | None): The bookend to use for text fields.
-            bookend_strip (bool): Whether to strip whitespace from the bookend.
-            encoding (str): The file encoding.
-            skip_header_rows (int): Number of header rows to skip.
-            skip_footer_rows (int): Number of footer rows to skip.
+            file_path: Path to the file to read.
+            delimiter: Delimiter to split fields on.
+            strip: If True, strip whitespace from tokens.
+            bookend: Optional bookend character to remove from tokens.
+            bookend_strip: If True, strip whitespace after removing bookends.
+            encoding: Text encoding to use when reading the file.
+            skip_header_rows: Number of leading lines to ignore.
+            skip_footer_rows: Number of trailing lines to ignore.
 
         Returns:
-            list[list[str]]: The list of lists of strings.
+            A list of token lists (one list per non-skipped line).
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None.
-            SplurgeFileNotFoundError: If the file does not exist.
-            SplurgeFilePermissionError: If the file cannot be accessed.
-            SplurgeFileEncodingError: If the file cannot be decoded with the specified encoding.
-
-        Example:
-            >>> DsvHelper.parse_file("data.csv", delimiter=",")
-            [['header1', 'header2'], ['value1', 'value2']]
+            SplurgeDsvParameterError: If ``delimiter`` is empty or None.
+            SplurgeDsvFileNotFoundError: If the file at ``file_path`` does not exist.
+            SplurgeDsvFilePermissionError: If the file cannot be accessed due to
+                permission restrictions.
+            SplurgeDsvFileEncodingError: If the file cannot be decoded using
+                the provided ``encoding``.
         """
         lines: list[str] = TextFileHelper.read(
             file_path, encoding=encoding, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows
@@ -172,18 +180,21 @@ class DsvHelper:
         bookend: str | None = None,
         bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
     ) -> list[list[str]]:
-        """
-        Process a chunk of lines from the stream.
+        """Parse a chunk of lines into tokenized rows.
+
+        Designed to be used by :meth:`parse_stream` as a helper for converting a
+        batch of raw lines into parsed rows.
 
         Args:
-            chunk: List of lines to process
-            delimiter: Delimiter to use for parsing
-            strip: Whether to strip whitespace
-            bookend: Bookend character for text fields
-            bookend_strip: Whether to strip whitespace from bookends
+            chunk: A list of raw input lines.
+            delimiter: Delimiter used to split each line.
+            strip: If True, strip whitespace from tokens.
+            bookend: Optional bookend character to remove from tokens.
+            bookend_strip: If True, strip whitespace after removing bookends.
 
         Returns:
-            list[list[str]]: Parsed rows
+            A list where each element is the token list for a corresponding
+            input line from ``chunk``.
         """
         return cls.parses(chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
 

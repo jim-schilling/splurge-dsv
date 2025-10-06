@@ -98,24 +98,27 @@ class PathValidator:
         allow_relative: bool = True,
         base_directory: str | Path | None = None,
     ) -> Path:
-        """
-        Validate a file path for security and correctness.
+        """Validate a filesystem path for security and correctness.
+
+        This is the central path validation routine used across the package.
 
         Args:
-            file_path: Path to validate
-            must_exist: Whether the file must exist
-            must_be_file: Whether the path must be a file (not directory)
-            must_be_readable: Whether the file must be readable
-            allow_relative: Whether to allow relative paths
-            base_directory: Base directory for relative path resolution
+            file_path: Path or string to validate.
+            must_exist: If True, require the path to exist.
+            must_be_file: If True, require the path to be a regular file.
+            must_be_readable: If True, check read permission via os.access().
+            allow_relative: If False, disallow relative paths.
+            base_directory: Optional directory to resolve relative paths
+                against and to restrict the resolved path to.
 
         Returns:
-            Normalized Path object
+            pathlib.Path: Resolved and normalized path.
 
         Raises:
-            SplurgeDsvPathValidationError: If path validation fails
-            SplurgeDsvFileNotFoundError: If file doesn't exist when required
-            SplurgeDsvFilePermissionError: If file is not readable when required
+            SplurgeDsvPathValidationError: If any validation rule fails.
+            SplurgeDsvFileNotFoundError: If must_exist is True and file is missing.
+            SplurgeDsvFilePermissionError: If must_be_readable is True and the
+                file is not readable.
         """
         # Convert to Path object
         path = Path(file_path) if isinstance(file_path, str) else file_path
@@ -191,22 +194,20 @@ class PathValidator:
 
     @classmethod
     def _is_valid_windows_drive_pattern(cls, path_str: str) -> bool:
-        """
-        Check if a path string contains a valid Windows drive letter pattern.
+        """Return True if ``path_str`` looks like a valid Windows drive pattern.
 
-        Args:
-            path_str: Path string to validate
-
-        Returns:
-            True if the path contains a valid Windows drive letter pattern,
-            False otherwise
+        Accepts both ``C:`` and ``C:\\...`` or ``C:/...`` forms.
         """
         # Must be C: at the end of the string, or C:\ (or C:/) followed by path
         return bool(re.match(r"^[A-Za-z]:$", path_str)) or bool(re.match(r"^[A-Za-z]:[\\/]", path_str))
 
     @classmethod
     def _check_dangerous_characters(cls, path_str: str) -> None:
-        """Check for dangerous characters in path string."""
+        """Raise if ``path_str`` contains characters disallowed by policy.
+
+        This guards against NULs, control characters, and reserved filesystem
+        characters which may be used in injection or traversal attacks.
+        """
         # Check for dangerous characters, but allow colons in Windows drive letters
         for char in cls._DANGEROUS_CHARS:
             if char in path_str:
@@ -225,7 +226,11 @@ class PathValidator:
 
     @classmethod
     def _check_path_traversal(cls, path_str: str) -> None:
-        """Check for path traversal patterns."""
+        """Raise if ``path_str`` contains obvious traversal patterns.
+
+        This is a best-effort check that catches sequences such as ``..``
+        and unusual repeated separators that are likely malicious.
+        """
         for pattern in cls._PATH_TRAVERSAL_PATTERNS:
             if re.search(pattern, path_str):
                 raise SplurgeDsvPathValidationError(
@@ -234,7 +239,11 @@ class PathValidator:
 
     @classmethod
     def _check_path_length(cls, path_str: str) -> None:
-        """Check if path length is within acceptable limits."""
+        """Raise if the path exceeds the configured maximum length.
+
+        Long paths can indicate malformed input or attempt to overflow
+        downstream APIs; this check enforces a sane upper bound.
+        """
         if len(path_str) > cls.MAX_PATH_LENGTH:
             raise SplurgeDsvPathValidationError(
                 f"Path is too long: {len(path_str)} characters",

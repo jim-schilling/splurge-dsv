@@ -1,16 +1,18 @@
 """Deterministic text-only writer utilities.
 
-Provides SafeTextFileWriter which ensures consistent newline handling across
-platforms by normalizing newlines to LF before writing. Also exposes
-``open_text_writer`` context manager which yields a file-like object for
-writing text safely (with explicit encoding and newline normalization).
+This module implements :class:`SafeTextFileWriter` and a convenience
+``open_text_writer`` context manager. Writes always use the configured
+encoding and normalize newline characters to a canonical form (LF) to
+ensure consistent files across platforms.
 
-This mirrors the read-only semantics in ``safe_text_file_reader.py`` but for
-writing.
+Example:
+    with open_text_writer("out.txt") as buf:
+        buf.write("line1\nline2\n")
 
-Copyright 2025 Jim Schilling
+Copyright (c) 2025 Jim Schilling
 Please preserve this header and all related material when sharing!
-This module is licensed under the MIT License.
+
+License: MIT
 """
 
 from __future__ import annotations
@@ -25,14 +27,16 @@ from .exceptions import SplurgeDsvFileEncodingError
 
 
 class SafeTextFileWriter:
-    """A small helper for deterministic text writes.
+    """Helper for deterministic text writes with newline normalization.
 
-    Behavior contract:
-    - Always writes text using the provided encoding (default UTF-8).
-    - Always normalizes any incoming newline characters to LF ("\n").
-    - Exposes a minimal file-like API: write(), writelines(), flush(), close().
+    Args:
+        file_path: Destination file path.
+        encoding: Text encoding to use (default: 'utf-8').
+        newline: Canonical newline sequence to write (default: '\n').
 
-    This class intentionally does not support binary modes.
+    The class exposes a minimal file-like API and will raise
+    :class:`SplurgeDsvFileEncodingError` when the underlying file cannot be
+    opened with the requested encoding.
     """
 
     def __init__(self, file_path: Path, *, encoding: str = "utf-8", newline: str | None = "\n") -> None:
@@ -45,8 +49,15 @@ class SafeTextFileWriter:
     def open(self, mode: str = "w") -> io.TextIOBase:
         """Open the underlying file for text writing.
 
-        Raises SplurgeFileEncodingError if the file cannot be opened with the
-        requested encoding.
+        Args:
+            mode: File open mode (default: 'w').
+
+        Returns:
+            The opened text file object.
+
+        Raises:
+            SplurgeDsvFileEncodingError: If the file cannot be opened with the
+                requested encoding or underlying OS error occurs.
         """
         try:
             # open with newline="" to allow us to manage newline normalization
@@ -58,9 +69,13 @@ class SafeTextFileWriter:
             raise SplurgeDsvFileEncodingError(str(exc)) from exc
 
     def write(self, text: str) -> int:
-        """Normalize newlines and write text to the file.
+        """Normalize newlines and write ``text`` to the opened file.
 
-        Returns number of characters written.
+        Args:
+            text: Text to write (newlines will be normalized).
+
+        Returns:
+            Number of characters written.
         """
         if self._file is None:
             raise ValueError("file not opened")
@@ -89,12 +104,19 @@ class SafeTextFileWriter:
 
 @contextmanager
 def open_text_writer(file_path: Path | str, *, encoding: str = "utf-8", mode: str = "w") -> Iterator[io.StringIO]:
-    """Context manager that yields an in-memory StringIO writer which will be
-    flushed to disk on successful exit.
+    """Context manager yielding an in-memory StringIO to accumulate text.
 
-    This allows callers to build up content safely in memory and write the
-    fully-normalized result to disk atomically (best-effort) when the context
-    exits.
+    On successful exit, the buffered content is normalized and written to
+    disk using :class:`SafeTextFileWriter`. If an exception occurs inside
+    the context, nothing is written and the exception is propagated.
+
+    Args:
+        file_path: Destination path to write to on successful exit.
+        encoding: Encoding to use when writing.
+        mode: File open mode passed to writer (default: 'w').
+
+    Yields:
+        io.StringIO: Buffer to write textual content into.
     """
     path = Path(file_path)
     buffer = io.StringIO()
@@ -104,7 +126,6 @@ def open_text_writer(file_path: Path | str, *, encoding: str = "utf-8", mode: st
         # Do not write on exceptions; re-raise
         raise
     else:
-        # Normalize final content and write to disk using SafeTextFileWriter
         content = buffer.getvalue()
         writer = SafeTextFileWriter(path, encoding=encoding)
         try:
