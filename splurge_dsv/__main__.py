@@ -1,14 +1,18 @@
-"""
-Command-line interface entry point for splurge-dsv.
+"""Module entrypoint for running splurge-dsv as a script.
 
-This module serves as the entry point when running the package as a module.
-It imports and calls the run_cli function from the cli module.
+When executed (``python -m splurge_dsv``), this module delegates to
+``splurge_dsv.cli.run_cli`` and returns the resulting exit code.
+
+License: MIT
+Copyright (c) 2025 Jim Schilling
 """
 
-# Standard library imports
+from __future__ import annotations
+
+# Standard library
 import sys
 
-# Local imports
+# Local
 from splurge_dsv.cli import run_cli
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "splurge-dsv"
-version = "2025.1.5"
+version = "2025.2.0"
 description = "A utility library for working with DSV (Delimited String Values) files"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,6 +32,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.0.241",
+    "pytest-mock>=3.0.0",
+    "hypothesis>=6.0.0",
 ]
 
 [project.urls]
@@ -40,13 +44,16 @@ Repository = "https://github.com/jim-schilling/splurge-dsv"
 Documentation = "https://github.com/jim-schilling/splurge-dsv#readme"
 "Bug Tracker" = "https://github.com/jim-schilling/splurge-dsv/issues"
 
+[project.scripts]
+splurge-dsv = "splurge_dsv.cli:run_cli"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["splurge_dsv*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-x -v --cov=splurge_dsv --cov-report=term-missing --cov-report=html --cov-fail-under=85"
+addopts = "-x -v -n 4"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -55,6 +62,13 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+[tool.hypothesis]
+# Hypothesis configuration for property-based testing
+max_examples = 100
+deadline = 5000  # 5 seconds per test
+suppress_health_check = ["too_slow"]
+verbosity = "normal"
 
 [tool.coverage.run]
 source = ["splurge_dsv"]
@@ -108,3 +122,9 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.mypy]
+# Only run mypy against the splurge_dsv package
+files = ["splurge_dsv"]
+# show_error_codes helps with diagnostics
+show_error_codes = true

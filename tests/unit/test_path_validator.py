@@ -10,16 +10,15 @@ import os
 import platform
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 # Third-party imports
 import pytest
 
 # Local imports
 from splurge_dsv.exceptions import (
-    SplurgeFileNotFoundError,
-    SplurgeFilePermissionError,
-    SplurgePathValidationError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvPathValidationError,
 )
 from splurge_dsv.path_validator import PathValidator
 
@@ -46,7 +45,7 @@ class TestPathValidatorValidatePath:
         """Test that validating non-existent file raises error when required."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             PathValidator.validate_path(test_file, must_exist=True)
 
     def test_validate_directory_as_file_raises_error(self, tmp_path: Path) -> None:
@@ -54,7 +53,7 @@ class TestPathValidatorValidatePath:
         test_dir = tmp_path / "testdir"
         test_dir.mkdir()
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(test_dir, must_be_file=True)
 
     def test_validate_relative_path_allowed(self, tmp_path: Path) -> None:
@@ -75,7 +74,7 @@ class TestPathValidatorValidatePath:
         """Test that relative path raises error when not allowed."""
         test_file = Path("relative.txt")
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(test_file, allow_relative=False)
 
     def test_validate_with_base_directory(self, tmp_path: Path) -> None:
@@ -98,7 +97,7 @@ class TestPathValidatorValidatePath:
         outside_file = tmp_path / "outside.txt"
         outside_file.write_text("test")
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(outside_file, base_directory=base_dir, must_exist=True)
 
     def test_validate_absolute_path_with_base_directory(self, tmp_path: Path) -> None:
@@ -116,7 +115,7 @@ class TestPathValidatorValidatePath:
         """Test that very long path raises error."""
         long_path = "a" * (PathValidator.MAX_PATH_LENGTH + 1)
 
-        with pytest.raises(SplurgePathValidationError):
+        with pytest.raises(SplurgeDsvPathValidationError):
             PathValidator.validate_path(long_path)
 
     def test_validate_path_with_dangerous_characters_raises_error(self) -> None:
@@ -133,7 +132,7 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in dangerous_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
     def test_validate_path_with_traversal_patterns_raises_error(self) -> None:
@@ -149,16 +148,16 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in traversal_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
-    def test_validate_windows_drive_letter(self) -> None:
+    def test_validate_windows_drive_letter(self, mocker) -> None:
         """Test validating Windows drive letter path."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.return_value = Path("C:/test/file.txt")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.return_value = Path("C:/test/file.txt")
 
-            result = PathValidator.validate_path("C:/test/file.txt")
-            assert result == Path("C:/test/file.txt")
+        result = PathValidator.validate_path("C:/test/file.txt")
+        assert result == Path("C:/test/file.txt")
 
     def test_validate_invalid_colon_usage_raises_error(self) -> None:
         """Test that invalid colon usage raises error."""
@@ -171,7 +170,7 @@ class TestPathValidatorValidatePath:
         ]
 
         for path in invalid_paths:
-            with pytest.raises(SplurgePathValidationError):
+            with pytest.raises(SplurgeDsvPathValidationError):
                 PathValidator.validate_path(path)
 
     def test_validate_unreadable_file_raises_error(self, tmp_path: Path) -> None:
@@ -187,7 +186,7 @@ class TestPathValidatorValidatePath:
         os.chmod(test_file, 0o000)
 
         try:
-            with pytest.raises(SplurgeFilePermissionError):
+            with pytest.raises(SplurgeDsvFilePermissionError):
                 PathValidator.validate_path(test_file, must_be_readable=True)
         finally:
             # Restore permissions
@@ -197,7 +196,7 @@ class TestPathValidatorValidatePath:
         """Test that checking readability of non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             PathValidator.validate_path(test_file, must_be_readable=True)
 
 
@@ -288,7 +287,7 @@ class TestPathValidatorIsSafePath:
         dangerous_paths = [
             "file<.txt",
             "file>.txt",
-            "file\".txt",
+            'file".txt',
             "file|.txt",
             "file?.txt",
             "file*.txt",
@@ -378,18 +377,18 @@ class TestPathValidatorEdgeCases:
         result = PathValidator.sanitize_filename("αβγ<file>name:with|invalid?.txt")
         assert result == "αβγ_file_name_with_invalid_.txt"
 
-    def test_validate_path_resolution_error(self) -> None:
+    def test_validate_path_resolution_error(self, mocker) -> None:
         """Test handling of path resolution errors."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.side_effect = RuntimeError("Resolution failed")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.side_effect = RuntimeError("Resolution failed")
 
-            with pytest.raises(SplurgePathValidationError):
-                PathValidator.validate_path("test.txt")
+        with pytest.raises(SplurgeDsvPathValidationError):
+            PathValidator.validate_path("test.txt")
 
-    def test_validate_path_os_error(self) -> None:
+    def test_validate_path_os_error(self, mocker) -> None:
         """Test handling of OS errors during validation."""
-        with patch("pathlib.Path.resolve") as mock_resolve:
-            mock_resolve.side_effect = OSError("OS error")
+        mock_resolve = mocker.patch("pathlib.Path.resolve")
+        mock_resolve.side_effect = OSError("OS error")
 
-            with pytest.raises(SplurgePathValidationError):
-                PathValidator.validate_path("test.txt")
+        with pytest.raises(SplurgeDsvPathValidationError):
+            PathValidator.validate_path("test.txt")

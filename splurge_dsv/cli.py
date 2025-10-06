@@ -1,14 +1,17 @@
-"""
-Command-line interface for splurge-dsv.
+"""Command-line interface utilities for splurge-dsv.
 
-This module provides a command-line interface for the splurge-dsv library,
-allowing users to parse DSV files from the command line.
+This module provides the CLI entry points and helpers for parsing DSV
+files from the command line. It exposes a thin wrapper around the
+library API suitable for use as ``python -m splurge_dsv``.
+
+Public API:
+    - parse_arguments: Build and parse the CLI argument parser.
+    - print_results: Nicely format parsed rows to stdout.
+    - run_cli: Main entrypoint invoked by ``__main__``.
+
+License: MIT
 
 Copyright (c) 2025 Jim Schilling
-
-This module is licensed under the MIT License.
-
-Please preserve this header and all related material when sharing!
 """
 
 # Standard library imports
@@ -19,12 +22,17 @@ from pathlib import Path
 
 # Local imports
 from splurge_dsv import __version__
-from splurge_dsv.dsv_helper import DsvHelper
+from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.exceptions import SplurgeDsvError
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Construct and parse command-line arguments for the CLI.
+
+    Returns:
+        argparse.Namespace: Parsed arguments with attributes matching the
+            defined options.
+    """
     parser = argparse.ArgumentParser(
         description="Parse DSV (Delimited String Values) files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -71,7 +79,15 @@ Examples:
 
 
 def print_results(rows: list[list[str]], delimiter: str) -> None:
-    """Print parsed results in a formatted way."""
+    """Print parsed rows in a human-readable table format.
+
+    The function computes column widths and prints a simple ASCII table.
+
+    Args:
+        rows: Parsed rows to print (first row is treated as header).
+        delimiter: Delimiter used (included here for compatibility; printing
+            does not depend on it directly).
+    """
     if not rows:
         print("No data found.")
         return
@@ -100,23 +116,17 @@ def print_results(rows: list[list[str]], delimiter: str) -> None:
 
 
 def run_cli() -> int:
-    """Run the command-line interface for DSV file parsing.
+    """Main entry point for running the splurge-dsv CLI.
 
-    This function serves as the main entry point for the splurge-dsv CLI tool.
-    It parses command-line arguments, validates the input file, and processes
-    DSV files according to the specified options. Supports both regular parsing
-    and streaming modes for large files.
+    The function handles argument parsing, basic path validation, constructing
+    the ``DsvConfig`` and ``Dsv`` objects, and printing results in the
+    requested format. Designed to be invoked from ``__main__``.
 
     Returns:
-        int: Exit code indicating success or failure:
-            - 0: Success
-            - 1: Generic error (file not found, parsing error, etc.)
-            - 2: Invalid arguments
-            - 130: Operation interrupted (Ctrl+C)
+        Exit code (0 success, non-zero error codes on failure).
 
     Raises:
-        SystemExit: Terminates the program with the appropriate exit code.
-            This is handled internally and should not be caught by callers.
+        SystemExit: On argument parser termination (handled internally).
     """
     try:
         args = parse_arguments()
@@ -131,6 +141,19 @@ def run_cli() -> int:
             print(f"Error: '{args.file_path}' is not a file.", file=sys.stderr)
             return 1
 
+        # Create configuration and Dsv instance for parsing
+        config = DsvConfig(
+            delimiter=args.delimiter,
+            strip=not args.no_strip,
+            bookend=args.bookend,
+            bookend_strip=not args.no_bookend_strip,
+            encoding=args.encoding,
+            skip_header_rows=args.skip_header,
+            skip_footer_rows=args.skip_footer,
+            chunk_size=args.chunk_size,
+        )
+        dsv = Dsv(config)
+
         # Parse the file
         if args.stream:
             if args.output_format != "json":
@@ -138,17 +161,7 @@ def run_cli() -> int:
             chunk_count = 0
             total_rows = 0
 
-            for chunk in DsvHelper.parse_stream(
-                file_path,
-                delimiter=args.delimiter,
-                strip=not args.no_strip,
-                bookend=args.bookend,
-                bookend_strip=not args.no_bookend_strip,
-                encoding=args.encoding,
-                skip_header_rows=args.skip_header,
-                skip_footer_rows=args.skip_footer,
-                chunk_size=args.chunk_size,
-            ):
+            for chunk in dsv.parse_stream(file_path):
                 chunk_count += 1
                 total_rows += len(chunk)
                 if args.output_format == "json":
@@ -166,16 +179,7 @@ def run_cli() -> int:
         else:
             if args.output_format not in ["json", "ndjson"]:
                 print(f"Parsing file '{args.file_path}' with delimiter '{args.delimiter}'...")
-            rows = DsvHelper.parse_file(
-                file_path,
-                delimiter=args.delimiter,
-                strip=not args.no_strip,
-                bookend=args.bookend,
-                bookend_strip=not args.no_bookend_strip,
-                encoding=args.encoding,
-                skip_header_rows=args.skip_header,
-                skip_footer_rows=args.skip_footer,
-            )
+            rows = dsv.parse_file(file_path)
 
             if args.output_format == "json":
                 print(json.dumps(rows, ensure_ascii=False))

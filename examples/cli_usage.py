@@ -63,7 +63,7 @@ def demonstrate_streaming_json_output(data_file: Path) -> None:
             ",",
             "--stream",
             "--chunk-size",
-            "1",
+            "100",
             "--output-format",
             "json",
         ]

@@ -1,136 +1,153 @@
-"""
-Custom exceptions for the splurge-dsv package.
+"""Custom exceptions used across the splurge-dsv package.
 
-This module provides a hierarchy of custom exceptions for better error handling
-and more specific error messages throughout the package.
+This module defines a clear exception hierarchy so callers can catch
+specific error categories (file, validation, parsing, streaming, etc.)
+instead of dealing with generic builtins. Each exception stores a
+human-readable ``message`` and optional ``details`` for diagnostic output.
+
+Module contents are intentionally lightweight: exceptions are primarily
+containers for structured error information.
+
+Example:
+    raise SplurgeDsvFileNotFoundError("File not found", details="/data/foo.csv")
+
+License: MIT
 
 Copyright (c) 2025 Jim Schilling
-
-Please preserve this header and all related material when sharing!
-
-This module is licensed under the MIT License.
 """
 
 
 class SplurgeDsvError(Exception):
-    """Base exception for all splurge-dsv errors."""
+    """Base exception carrying a message and optional details.
+
+    Args:
+        message: Primary error message to display to the user.
+        details: Optional machine-readable details useful for debugging.
+
+    Attributes:
+        message: User-facing error message.
+        details: Optional additional diagnostic information.
+    """
 
     def __init__(self, message: str, *, details: str | None = None) -> None:
-        """
-        Initialize SplurgeDsvError.
-
-        Args:
-            message: Primary error message
-            details: Additional error details
-        """
         self.message = message
         self.details = details
         super().__init__(self.message)
 
 
-class SplurgeValidationError(SplurgeDsvError):
-    """Raised when data validation fails."""
-
-    pass
+# New-style exception names. Use a SplurgeDsv* prefix to avoid colliding with
+# Python builtins. We keep the Splurge* aliases for backward compatibility.
 
 
-class SplurgeFileOperationError(SplurgeDsvError):
-    """Base exception for file operation errors."""
+class SplurgeDsvValidationError(SplurgeDsvError):
+    """Raised when data validation fails.
 
-    pass
-
-
-class SplurgeFileNotFoundError(SplurgeFileOperationError):
-    """Raised when a file is not found."""
-
-    pass
+    This exception indicates input or configuration values do not meet
+    expected constraints (for example: invalid delimiter, out-of-range
+    parameters, or malformed metadata).
+    """
 
 
-class SplurgeFilePermissionError(SplurgeFileOperationError):
-    """Raised when there are permission issues with file operations."""
+class SplurgeDsvFileOperationError(SplurgeDsvError):
+    """Base exception for file operation errors.
 
-    pass
-
-
-class SplurgeFileEncodingError(SplurgeFileOperationError):
-    """Raised when there are encoding issues with file operations."""
-
-    pass
+    Used as a parent for file-related conditions such as not found,
+    permission denied, or encoding issues.
+    """
 
 
-class SplurgePathValidationError(SplurgeFileOperationError):
-    """Raised when file path validation fails."""
+class SplurgeDsvFileNotFoundError(SplurgeDsvFileOperationError):
+    """Raised when an expected file cannot be located.
 
-    pass
-
-
-class SplurgeDataProcessingError(SplurgeDsvError):
-    """Base exception for data processing errors."""
-
-    pass
+    This typically maps to ``FileNotFoundError`` semantics but uses the
+    package-specific exception hierarchy so callers can distinguish
+    file errors from other error types.
+    """
 
 
-class SplurgeParsingError(SplurgeDataProcessingError):
-    """Raised when data parsing fails."""
+class SplurgeDsvFilePermissionError(SplurgeDsvFileOperationError):
+    """Raised for permission or access-related file errors.
 
-    pass
-
-
-class SplurgeTypeConversionError(SplurgeDataProcessingError):
-    """Raised when type conversion fails."""
-
-    pass
+    For example, attempting to open a file without read permission will
+    raise this exception.
+    """
 
 
-class SplurgeStreamingError(SplurgeDataProcessingError):
-    """Raised when streaming operations fail."""
+class SplurgeDsvFileEncodingError(SplurgeDsvFileOperationError):
+    """Raised when decoding or encoding a text file fails.
 
-    pass
-
-
-class SplurgeConfigurationError(SplurgeDsvError):
-    """Raised when configuration is invalid."""
-
-    pass
+    The exception typically wraps the underlying decoding error and
+    provides a descriptive message and optional details for diagnostics.
+    """
 
 
-class SplurgeResourceError(SplurgeDsvError):
-    """Base exception for resource management errors."""
+class SplurgeDsvPathValidationError(SplurgeDsvFileOperationError):
+    """Raised when a provided filesystem path fails validation checks.
 
-    pass
-
-
-class SplurgeResourceAcquisitionError(SplurgeResourceError):
-    """Raised when resource acquisition fails."""
-
-    pass
+    Use this exception for path traversal, dangerous characters, or other
+    validation failures detected by the path validation utilities.
+    """
 
 
-class SplurgeResourceReleaseError(SplurgeResourceError):
-    """Raised when resource release fails."""
+class SplurgeDsvDataProcessingError(SplurgeDsvError):
+    """Base exception for errors that occur during data processing (parsing, conversion).
 
-    pass
-
-
-class SplurgePerformanceWarning(SplurgeDsvError):
-    """Warning for performance-related issues."""
-
-    pass
+    This groups parsing, type conversion, and streaming errors that occur
+    while transforming file content into structured data.
+    """
 
 
-class SplurgeParameterError(SplurgeValidationError):
-    """Raised when function parameters are invalid."""
-
-    pass
+class SplurgeDsvParsingError(SplurgeDsvDataProcessingError):
+    """Raised when parsing fails due to malformed or unexpected content."""
 
 
-class SplurgeRangeError(SplurgeValidationError):
-    """Raised when values are outside expected ranges."""
-
-    pass
+class SplurgeDsvTypeConversionError(SplurgeDsvDataProcessingError):
+    """Raised when a value cannot be converted to the requested type."""
 
 
-class SplurgeFormatError(SplurgeValidationError):
-    """Raised when data format is invalid."""
+class SplurgeDsvStreamingError(SplurgeDsvDataProcessingError):
+    """Raised for errors during streaming (e.g., partial reads, IO interruptions)."""
 
-    pass
+
+class SplurgeDsvConfigurationError(SplurgeDsvError):
+    """Raised when an invalid configuration is provided to an API.
+
+    Examples include invalid chunk sizes, missing delimiters, or mutually
+    exclusive options supplied together.
+    """
+
+
+class SplurgeDsvResourceError(SplurgeDsvError):
+    """Base exception for resource acquisition and release errors."""
+
+
+class SplurgeDsvResourceAcquisitionError(SplurgeDsvResourceError):
+    """Raised when acquiring external resources (files, streams) fails."""
+
+
+class SplurgeDsvResourceReleaseError(SplurgeDsvResourceError):
+    """Raised when releasing resources (closing files or handles) fails."""
+
+
+class SplurgeDsvPerformanceWarning(SplurgeDsvError):
+    """Raised to indicate performance-related concerns that may need attention.
+
+    This is not a fatal error but can be used to signal suboptimal usage
+    patterns (for example, very small streaming chunk sizes) to callers.
+    """
+
+
+class SplurgeDsvParameterError(SplurgeDsvValidationError):
+    """Raised when a function or method receives invalid parameters.
+
+    Use this for invalid types, missing required values, or arguments that
+    violate expected constraints.
+    """
+
+
+class SplurgeDsvRangeError(SplurgeDsvValidationError):
+    """Raised when a value falls outside an expected numeric or length range."""
+
+
+class SplurgeDsvFormatError(SplurgeDsvValidationError):
+    """Raised when the data format is invalid or cannot be parsed as expected."""

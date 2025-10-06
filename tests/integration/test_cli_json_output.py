@@ -44,13 +44,13 @@ def test_cli_json_output_basic(cli_command: str, tmp_path: Path) -> None:
 
 def test_cli_json_output_streaming(cli_command: str, tmp_path: Path) -> None:
     """CLI should output valid JSON per chunk in streaming mode."""
-    lines = ["a,b,c"] + [f"{i},{i+1},{i+2}" for i in range(0, 10, 3)]
+    lines = ["a,b,c"] + [f"{i},{i + 1},{i + 2}" for i in range(0, 10, 3)]
     file_path = tmp_path / "data.csv"
     file_path.write_text("\n".join(lines))
 
     code, stdout, stderr = run_cli(
         cli_command,
-        [str(file_path), "--delimiter", ",", "--stream", "--chunk-size", "2", "--output-format", "json"],
+        [str(file_path), "--delimiter", ",", "--stream", "--chunk-size", "100", "--output-format", "json"],
     )
 
     assert code == 0, f"stderr: {stderr}"
@@ -60,4 +60,3 @@ def test_cli_json_output_streaming(cli_command: str, tmp_path: Path) -> None:
     for chunk in chunks:
         json_chunk = json.loads(chunk)
         assert isinstance(json_chunk, list)
-

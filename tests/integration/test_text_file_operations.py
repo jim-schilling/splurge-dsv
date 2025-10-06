@@ -15,9 +15,9 @@ import pytest
 
 # Local imports
 from splurge_dsv.exceptions import (
-    SplurgeFileEncodingError,
-    SplurgeFileNotFoundError,
-    SplurgeFilePermissionError,
+    SplurgeDsvFileEncodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
 )
 from splurge_dsv.text_file_helper import TextFileHelper
 
@@ -77,7 +77,7 @@ class TestTextFileHelperLineCountIntegration:
         """Test that counting lines in non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             TextFileHelper.line_count(test_file)
 
     def test_line_count_with_different_encoding(self, tmp_path: Path) -> None:
@@ -153,7 +153,7 @@ class TestTextFileHelperPreviewIntegration:
         """Test that previewing non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             TextFileHelper.preview(test_file)
 
 
@@ -236,7 +236,7 @@ class TestTextFileHelperReadIntegration:
         """Test that reading non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             TextFileHelper.read(test_file)
 
     def test_read_with_different_encoding(self, tmp_path: Path) -> None:
@@ -328,7 +328,7 @@ class TestTextFileHelperStreamIntegration:
         """Test that streaming non-existent file raises error."""
         test_file = tmp_path / "nonexistent.txt"
 
-        with pytest.raises(SplurgeFileNotFoundError):
+        with pytest.raises(SplurgeDsvFileNotFoundError):
             list(TextFileHelper.read_as_stream(test_file))
 
     def test_read_as_stream_with_different_encoding(self, tmp_path: Path) -> None:
@@ -434,7 +434,7 @@ class TestTextFileHelperEncodingIntegration:
         # Write binary data that's not valid UTF-8
         test_file.write_bytes(b"valid text\n\xff\xfe\nmore text")
 
-        with pytest.raises(SplurgeFileEncodingError):
+        with pytest.raises(SplurgeDsvFileEncodingError):
             TextFileHelper.read(test_file)
 
     def test_read_file_with_permission_error(self, tmp_path: Path) -> None:
@@ -450,7 +450,7 @@ class TestTextFileHelperEncodingIntegration:
         os.chmod(test_file, 0o000)
 
         try:
-            with pytest.raises(SplurgeFilePermissionError):
+            with pytest.raises(SplurgeDsvFilePermissionError):
                 TextFileHelper.read(test_file)
         finally:
             # Restore permissions
