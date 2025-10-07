@@ -94,7 +94,10 @@ Error modes:
 
 `Dsv` is a small, stateful wrapper around the parsing helpers. You typically
 instantiate a `Dsv` with a `DsvConfig` and call `parse`, `parse_file`, or
-`parse_stream`.
+`parse_file_stream`.
+
+> Note: `parse_stream()` remains available for backward compatibility but is
+> deprecated and will emit a DeprecationWarning; prefer `parse_file_stream()`.
 
 API surface (abridged):
 
@@ -103,6 +106,12 @@ API surface (abridged):
 - `parse_file(path: str, ...) -> list[list[str]]` — Parse an entire file.
 - `parse_stream(path: str, ...) -> Iterator[list[list[str]]]` — Stream-parse a
   file in chunks.
+ - `parse_file_stream(path: str, ...) -> Iterator[list[list[str]]]` — Preferred stream-parse method; yields parsed chunks and aligns naming with `parse_file()`.
+
+> Deprecated: `parse_stream()` is deprecated. Use `parse_file_stream()` instead.
+> `parse_stream()` will emit a DeprecationWarning when called and will be
+> removed in a future release. See `parse_file_stream()` below for the
+> preferred API.
 
 Example — parse a file with headers:
 
@@ -130,14 +139,20 @@ Key methods:
 - `DsvHelper.parse(content: str, *, delimiter: str, bookend: str|None = None, strip: bool=True) -> list[str]`
 - `DsvHelper.parses(content: list[str], *, delimiter: str, ...) -> list[list[str]]`
 - `DsvHelper.parse_file(file_path: str, *, delimiter: str, encoding: str='utf-8', ...) -> list[list[str]]`
-- `DsvHelper.parse_stream(file_path: str, *, delimiter: str, chunk_size: int=500, ...) -> Iterator[list[list[str]]]`
+ - `DsvHelper.parse_stream(file_path: str, *, delimiter: str, chunk_size: int=500, ...) -> Iterator[list[list[str]]]`
+   
+   Deprecated: `DsvHelper.parse_stream()` will emit a DeprecationWarning and
+   delegates to `DsvHelper.parse_file_stream()`. Use `parse_file_stream()` for
+   a clearer name and consistent error handling across the API.
+
+ - `DsvHelper.parse_file_stream(file_path: str, *, delimiter: str, chunk_size: int=500, ...) -> Iterator[list[list[str]]]` — Preferred streaming API. Yields parsed chunks of rows read from the file. Parameters and behavior match `parse_stream()` but with a clearer name that aligns with `parse_file()`.
 
 Example — parse streaming file in chunks:
 
 ```python
 from splurge_dsv import DsvHelper
 
-for chunk in DsvHelper.parse_stream("big.csv", delimiter=","):
+for chunk in DsvHelper.parse_file_stream("big.csv", delimiter=","):
     for row in chunk:
         process(row)
 ```
@@ -335,7 +350,7 @@ rows = parser.parse_file("data.csv")
 ```python
 from splurge_dsv import DsvHelper
 
-for chunk in DsvHelper.parse_stream("big.csv", delimiter=","):
+for chunk in DsvHelper.parse_file_stream("big.csv", delimiter=","):
     for row in chunk:
         # process row
         pass

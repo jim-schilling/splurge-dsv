@@ -60,7 +60,7 @@ from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
 
-__version__ = "2025.2.0"
+__version__ = "2025.2.1"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 

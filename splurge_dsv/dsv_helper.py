@@ -9,6 +9,7 @@ This module is licensed under the MIT License.
 """
 
 # Standard library imports
+import warnings
 from collections.abc import Iterator
 from os import PathLike
 
@@ -199,7 +200,7 @@ class DsvHelper:
         return cls.parses(chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
 
     @classmethod
-    def parse_stream(
+    def parse_file_stream(
         cls,
         file_path: PathLike[str] | str,
         *,
@@ -213,7 +214,7 @@ class DsvHelper:
         chunk_size: int = DEFAULT_CHUNK_SIZE,
     ) -> Iterator[list[list[str]]]:
         """
-        Stream-parse a DSV file in chunks of lines.
+        Stream-parse a DSV file into chunks of lines.
 
         Args:
             file_path (PathLike[str] | str): The path to the file to parse.
@@ -254,4 +255,52 @@ class DsvHelper:
                 skip_footer_rows=skip_footer_rows,
                 chunk_size=chunk_size,
             )
+        )
+
+    @classmethod
+    def parse_stream(
+        cls,
+        file_path: PathLike[str] | str,
+        *,
+        delimiter: str,
+        strip: bool = DEFAULT_STRIP,
+        bookend: str | None = None,
+        bookend_strip: bool = DEFAULT_BOOKEND_STRIP,
+        encoding: str = DEFAULT_ENCODING,
+        skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
+        skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+    ) -> Iterator[list[list[str]]]:
+        """
+        Stream-parse a DSV file, yielding chunks of parsed rows.
+
+        The method yields lists of parsed rows (each row itself is a list of
+        strings). Chunk sizing is controlled by the bound configuration's
+        ``chunk_size`` value.
+
+        Args:
+            file_path: Path to the file to parse.
+
+        Yields:
+            Lists of parsed rows, each list containing up to ``chunk_size`` rows.
+
+        Deprecated: Use `parse_file_stream` instead. This method will be removed in a future release.
+        """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "DsvHelper.parse_stream() is deprecated and will be removed in a future release; use DsvHelper.parse_file_stream() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return cls.parse_file_stream(
+            file_path,
+            delimiter=delimiter,
+            strip=strip,
+            bookend=bookend,
+            bookend_strip=bookend_strip,
+            encoding=encoding,
+            skip_header_rows=skip_header_rows,
+            skip_footer_rows=skip_footer_rows,
+            chunk_size=chunk_size,
         )

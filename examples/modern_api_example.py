@@ -145,7 +145,7 @@ def demonstrate_file_operations() -> None:
         print("\n--- Streaming Example ---")
         chunk_count = 0
         total_rows = 0
-        for chunk in csv_dsv.parse_stream(str(csv_file)):
+        for chunk in csv_dsv.parse_file_stream(str(csv_file)):
             chunk_count += 1
             total_rows += len(chunk)
             print(f"✓ Processed chunk {chunk_count}: {len(chunk)} rows")

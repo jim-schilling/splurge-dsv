@@ -140,7 +140,7 @@ class TestFileStreamingIntegration:
         test_file = tmp_path / "empty.csv"
         test_file.write_text("")
 
-        result = list(DsvHelper.parse_stream(test_file, delimiter=","))
+        result = list(DsvHelper.parse_file_stream(test_file, delimiter=","))
         assert result == []
 
     def test_parse_stream_basic_csv(self, tmp_path: Path) -> None:
@@ -148,7 +148,7 @@ class TestFileStreamingIntegration:
         test_file = tmp_path / "test.csv"
         test_file.write_text("a,b,c\nd,e,f\ng,h,i")
 
-        result = list(DsvHelper.parse_stream(test_file, delimiter=","))
+        result = list(DsvHelper.parse_file_stream(test_file, delimiter=","))
         expected = [[["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]]]
         assert result == expected
 
@@ -157,7 +157,7 @@ class TestFileStreamingIntegration:
         test_file = tmp_path / "test.csv"
         test_file.write_text('"a","b","c"\n"d","e","f"')
 
-        result = list(DsvHelper.parse_stream(test_file, delimiter=",", bookend='"'))
+        result = list(DsvHelper.parse_file_stream(test_file, delimiter=",", bookend='"'))
         expected = [[["a", "b", "c"], ["d", "e", "f"]]]
         assert result == expected
 
@@ -166,7 +166,7 @@ class TestFileStreamingIntegration:
         test_file = tmp_path / "test.csv"
         test_file.write_text("header1,header2,header3\na,b,c\nd,e,f")
 
-        result = list(DsvHelper.parse_stream(test_file, delimiter=",", skip_header_rows=1))
+        result = list(DsvHelper.parse_file_stream(test_file, delimiter=",", skip_header_rows=1))
         expected = [[["a", "b", "c"], ["d", "e", "f"]]]
         assert result == expected
 
@@ -175,7 +175,7 @@ class TestFileStreamingIntegration:
         test_file = tmp_path / "nonexistent.csv"
 
         with pytest.raises(SplurgeDsvFileNotFoundError):
-            list(DsvHelper.parse_stream(test_file, delimiter=","))
+            list(DsvHelper.parse_file_stream(test_file, delimiter=","))
 
 
 class TestFileEncodingIntegration:
@@ -265,7 +265,7 @@ class TestLargeFileIntegration:
         test_file.write_text("\n".join(lines))
 
         # Stream the file
-        result = list(DsvHelper.parse_stream(test_file, delimiter=","))
+        result = list(DsvHelper.parse_file_stream(test_file, delimiter=","))
 
         # The result is a list of chunks, each chunk contains multiple rows
         # With default chunk size, we might get multiple chunks

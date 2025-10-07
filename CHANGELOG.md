@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
-## 2025.2.0 - (Release Date TBD)
+## 2025.2.1 - 2025-10-07
+### Deprecated
+- **Deprecated `parse_stream` API**: `Dsv.parse_stream()` and `DsvHelper.parse_stream()` now emit a deprecation warning and will be removed in a future release. Use the new `parse_file_stream()` method on `Dsv`/`DsvHelper` instead for stream-based parsing of files (preserves chunked/streaming behavior). This change was made to standardize the naming and make the streaming API surface consistent across helpers and the `Dsv` class.
+
+
+## 2025.2.0 - 2025-10-06
 ### Added
 - **Comprehensive Property-Based Testing**: Added Hypothesis framework tests for invariant verification
   - `test_string_tokenizer_properties.py`: 6 tests covering parsing consistency and edge cases
