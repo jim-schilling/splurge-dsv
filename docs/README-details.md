@@ -1,5 +1,12 @@
 # splurge-dsv — Detailed Documentation
 
+> **⚠️ DEPRECATION WARNING in v2025.2.1**
+>
+> - **DsvHelper.parse_stream**: This method is deprecated in favor of `DsvHelper.parse_file_stream`.
+> - **Dsv.parse_stream**: This method is deprecated in favor of `Dsv.parse_file_stream`.
+>
+> See the [CHANGELOG](CHANGELOG.md) for migration guidance.
+
 > **⚠️ BREAKING CHANGES in v2025.2.0**
 >
 > - **Exception Names Changed**: All exceptions now use `SplurgeDsv*` prefix (e.g., `SplurgeParameterError` → `SplurgeDsvParameterError`)
@@ -137,12 +144,12 @@ rows = DsvHelper.parse_file(
 from splurge_dsv import DsvHelper
 
 # Stream parse a large file in chunks
-for chunk in DsvHelper.parse_stream("large_file.csv", delimiter=",", chunk_size=1000):
+for chunk in DsvHelper.parse_file_stream("large_file.csv", delimiter=",", chunk_size=1000):
     for row in chunk:
         process_row(row)
 
 # Stream with header/footer skipping
-for chunk in DsvHelper.parse_stream(
+for chunk in DsvHelper.parse_file_stream(
     "large_file.csv",
     delimiter=",",
     skip_header_rows=1,
@@ -245,7 +252,7 @@ Modern object-oriented API class that encapsulates configuration and provides pa
 - `parse(content)` - Parse a single string
 - `parses(content_list)` - Parse multiple strings
 - `parse_file(file_path)` - Parse a file
-- `parse_stream(file_path)` - Stream parse a file
+- `parse_file_stream(file_path)` - Stream parse a file
 
 ### DsvHelper
 
@@ -256,7 +263,7 @@ Main class for DSV parsing operations.
 - `parse(content, delimiter, strip=True, bookend=None, bookend_strip=True)` - Parse a single string
 - `parses(content_list, delimiter, strip=True, bookend=None, bookend_strip=True)` - Parse multiple strings
 - `parse_file(file_path, delimiter, strip=True, bookend=None, bookend_strip=True, skip_header_rows=0, skip_footer_rows=0, encoding='utf-8')` - Parse a file
-- `parse_stream(file_path, delimiter, strip=True, bookend=None, bookend_strip=True, skip_header_rows=0, skip_footer_rows=0, encoding='utf-8', chunk_size=500)` - Stream parse a file
+- `parse_file_stream(file_path, delimiter, strip=True, bookend=None, bookend_strip=True, skip_header_rows=0, skip_footer_rows=0, encoding='utf-8', chunk_size=500)` - Stream parse a file
 
 ### TextFileHelper
 
@@ -324,7 +331,7 @@ rows = dsv.parses(["a,b,c", "d,e,f"])
 rows = dsv.parse_file("data.csv")
 
 # Stream parse large files
-for chunk in dsv.parse_stream("large.csv"):
+for chunk in dsv.parse_file_stream("large.csv"):
     for row in chunk:
         process_row(row)
 ```
@@ -484,7 +491,7 @@ from splurge_dsv import DsvHelper
 # For very large files, use streaming with small chunks
 def process_large_file(file_path):
     total_rows = 0
-    for chunk in DsvHelper.parse_stream(file_path, delimiter=",", chunk_size=100):
+    for chunk in DsvHelper.parse_file_stream(file_path, delimiter=",", chunk_size=100):
         for row in chunk:
             total_rows += 1
             # Process row immediately to save memory

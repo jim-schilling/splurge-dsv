@@ -285,7 +285,7 @@ class TestDsv:
             temp_path = f.name
 
         try:
-            chunks = list(parser.parse_stream(temp_path))
+            chunks = list(parser.parse_file_stream(temp_path))
             # Should have at least one chunk
             assert len(chunks) >= 1
             # All chunks should be non-empty
@@ -308,9 +308,9 @@ class TestDsv:
             temp_path = f.name
 
         try:
-            dsv_chunks = list(parser.parse_stream(temp_path))
+            dsv_chunks = list(parser.parse_file_stream(temp_path))
             helper_chunks = list(
-                DsvHelper.parse_stream(
+                DsvHelper.parse_file_stream(
                     temp_path,
                     delimiter="\t",
                     chunk_size=3,

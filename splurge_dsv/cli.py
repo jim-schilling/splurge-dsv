@@ -161,7 +161,7 @@ def run_cli() -> int:
             chunk_count = 0
             total_rows = 0
 
-            for chunk in dsv.parse_stream(file_path):
+            for chunk in dsv.parse_file_stream(file_path):
                 chunk_count += 1
                 total_rows += len(chunk)
                 if args.output_format == "json":
