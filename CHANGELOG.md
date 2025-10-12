@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.3.0] - 2025-10-11
+
 ## [2025.2.2] - 2025-10-11
 ### Deprecated
 - **Deprecated `SafeTextFileReader`**: The `SafeTextFileReader` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for file reading operations.

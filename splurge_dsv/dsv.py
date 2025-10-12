@@ -17,7 +17,6 @@ Copyright (c) 2025 Jim Schilling
 """
 
 # Standard library imports
-import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
 from os import PathLike
@@ -264,33 +263,3 @@ class Dsv:
             skip_footer_rows=self.config.skip_footer_rows,
             chunk_size=self.config.chunk_size,
         )
-
-    def parse_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
-        """Stream-parse a DSV file, yielding chunks of parsed rows.
-
-        The method yields lists of parsed rows (each row itself is a list of
-        strings). Chunk sizing is controlled by the bound configuration's
-        ``chunk_size`` value.
-
-        Args:
-            file_path: Path to the file to parse.
-
-        Yields:
-            Lists of parsed rows, each list containing up to ``chunk_size`` rows.
-
-        Raises:
-            SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvFileNotFoundError: If the file cannot be found.
-            SplurgeDsvFilePermissionError: If the file cannot be read.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
-            SplurgeDsvError: For other unexpected errors.
-
-        Deprecated: Use `parse_file_stream` instead. This method will be removed in a future release.
-        """
-        # Emit a DeprecationWarning to signal removal in a future release
-        warnings.warn(
-            "Dsv.parse_stream() is deprecated and will be removed in a future release; use Dsv.parse_file_stream() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return Dsv.parse_file_stream(self, file_path)
