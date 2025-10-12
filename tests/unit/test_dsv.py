@@ -35,7 +35,7 @@ class TestDsvConfig:
         assert config.encoding == "utf-8"
         assert config.skip_header_rows == 0
         assert config.skip_footer_rows == 0
-        assert config.chunk_size == 500
+        assert config.chunk_size == 10
 
     def test_dsv_config_creation_full(self):
         """Test DsvConfig creation with all parameters specified."""
@@ -71,8 +71,8 @@ class TestDsvConfig:
 
     def test_dsv_config_validation_chunk_size_too_small(self):
         """Test that chunk_size below minimum raises ParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="chunk_size must be at least 100"):
-            DsvConfig(delimiter=",", chunk_size=50)
+        with pytest.raises(SplurgeDsvParameterError, match="chunk_size must be at least 10, got 5"):
+            DsvConfig(delimiter=",", chunk_size=5)
 
     def test_dsv_config_validation_negative_skip_header(self):
         """Test that negative skip_header_rows raises ParameterError."""

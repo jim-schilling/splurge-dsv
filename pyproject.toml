@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "splurge-dsv"
-version = "2025.2.1"
+version = "2025.2.2"
 description = "A utility library for working with DSV (Delimited String Values) files"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,13 +25,14 @@ classifiers = [
     "Topic :: Text Processing :: Filters",
 ]
 
-dependencies = []
+dependencies = [
+    "splurge-safe-io>=2025.0.4",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "pytest-xdist>=3.0.0",
     "mypy>=1.0.0",
     "ruff>=0.0.241",
     "pytest-mock>=3.0.0",
@@ -53,7 +54,7 @@ include = ["splurge_dsv*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-x -v -n 4"
+addopts = "-x -v"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -128,3 +129,5 @@ line-ending = "auto"
 files = ["splurge_dsv"]
 # show_error_codes helps with diagnostics
 show_error_codes = true
+# Allow missing imports for vendored/external helper package used at runtime
+ignore_missing_imports = true

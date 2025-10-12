@@ -43,7 +43,7 @@ class TestStringTokenizerProperties:
             # No delimiter in content - should return single token
             tokens = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
             if strip and content.strip() == "":
-                assert tokens == []
+                assert tokens == [""]
             else:
                 expected = [content.strip()] if strip else [content]
                 assert tokens == expected
@@ -59,7 +59,7 @@ class TestStringTokenizerProperties:
         # If no delimiter in content, should be single token
         if delimiter not in content:
             if strip and not content.strip():
-                assert tokens == []
+                assert tokens == [""]
             else:
                 expected = [content.strip()] if strip else [content]
                 assert tokens == expected
@@ -122,7 +122,7 @@ class TestStringTokenizerProperties:
         if not content.strip():
             tokens = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
             if strip:
-                assert tokens == []
+                assert tokens == [""]
             else:
                 # Without strip, split the content as-is
                 expected = content.split(delimiter)
@@ -134,7 +134,7 @@ class TestStringTokenizerProperties:
         if delimiter not in content:
             tokens = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
             if strip and not content.strip():
-                assert tokens == []
+                assert tokens == [""]
             else:
                 expected = [content.strip()] if strip else [content]
                 assert tokens == expected
@@ -144,7 +144,7 @@ class TestStringTokenizerProperties:
         """Test parsing empty string."""
         tokens = StringTokenizer.parse("", delimiter=delimiter, strip=strip)
         if strip:
-            assert tokens == []
+            assert tokens == [""]
         else:
             # Empty string split returns single empty token
             assert tokens == [""]
@@ -154,7 +154,7 @@ class TestStringTokenizerProperties:
         """Test parsing whitespace-only string."""
         tokens = StringTokenizer.parse("   ", delimiter=delimiter, strip=strip)
         if strip:
-            assert tokens == []
+            assert tokens == [""]
         else:
             assert tokens == ["   "]
 

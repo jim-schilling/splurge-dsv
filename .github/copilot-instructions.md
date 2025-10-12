@@ -182,7 +182,7 @@ This document contains coding standards and guidelines for the splurge-ai-rules 
 - Prefer shared helpers for common logic.
 - Avoid validation of implementation details and private APIs.
 - Prefer validation of patterns of text, and avoid exact matching of content and formatting.
-- Prefer pytest; pytest-xdist may be used optionally for parallel runs (e.g., -n 4) when desired.
+-- Prefer pytest for testing; parallel execution via pytest-xdist is not used by this project.
 - Prefer pytest-cov for code coverage with parameters --cov=your_package --cov-report=term-missing.
 - Prefer pytest-mock for mocking and patching, where appropriate.
 - Run pytest with code coverage when asked by user, otherwise skip.

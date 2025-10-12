@@ -23,14 +23,24 @@ This module is licensed under the MIT License.
 """
 
 # Standard library imports
+import warnings
 from collections.abc import Iterator
 from os import PathLike
 from pathlib import Path
 
+# Import external reader module to honor its configured limits
+import splurge_safe_io.path_validator as safe_io_path_validator
+import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader
+
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvParameterError
-from splurge_dsv.path_validator import PathValidator
-from splurge_dsv.safe_text_file_reader import SafeTextFileReader
+from splurge_dsv.exceptions import (
+    SplurgeDsvError,
+    SplurgeDsvFileDecodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvParameterError,
+    SplurgeDsvPathValidationError,
+)
 
 
 class TextFileHelper:
@@ -44,13 +54,46 @@ class TextFileHelper:
     """
 
     DEFAULT_ENCODING = "utf-8"
-    DEFAULT_MAX_LINES = 100
+    DEFAULT_MAX_LINES = 25
     DEFAULT_CHUNK_SIZE = 500
     DEFAULT_MIN_CHUNK_SIZE = 100
     DEFAULT_SKIP_HEADER_ROWS = 0
     DEFAULT_SKIP_FOOTER_ROWS = 0
     DEFAULT_STRIP = True
     DEFAULT_MODE = "r"
+
+    @staticmethod
+    def _validate_path(
+        path: Path | str, *, must_exist: bool = True, must_be_file: bool = True, must_be_readable: bool = True
+    ) -> Path:
+        """Validate the provided file path.
+
+        Args:
+            path: The file path to validate.
+
+        Returns:
+            A validated Path object.
+
+        Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If the file cannot be accessed due to permission restrictions
+            SplurgeDsvError: For other unexpected errors.
+        """
+        try:
+            effective_path = safe_io_path_validator.PathValidator.validate_path(
+                Path(path), must_exist=must_exist, must_be_file=must_be_file, must_be_readable=must_be_readable
+            )
+        except safe_io_path_validator.SplurgeSafeIoPathValidationError as ex:
+            raise SplurgeDsvPathValidationError(f"Invalid file path: {path}") from ex
+        except safe_io_path_validator.SplurgeSafeIoFileNotFoundError as ex:
+            raise SplurgeDsvFileNotFoundError(f"File not found: {path}") from ex
+        except safe_io_path_validator.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error validating file path: {path}") from ex
+
+        return effective_path
 
     @classmethod
     def line_count(cls, file_path: PathLike[str] | str, *, encoding: str = DEFAULT_ENCODING) -> int:
@@ -74,15 +117,37 @@ class TextFileHelper:
             SplurgeDsvFileEncodingError: If the file cannot be decoded using the
                 provided ``encoding``.
             SplurgeDsvPathValidationError: If path validation fails.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release.
         """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "TextFileHelper.line_count() is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         # Validate file path
-        validated_path = PathValidator.validate_path(
+        effective_file_path = cls._validate_path(
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
-        # Delegate to SafeTextFileReader which centralizes newline normalization
-        reader = SafeTextFileReader(validated_path, encoding=encoding)
-        return len(reader.read(strip=False))
+        # Delegate to the external SafeTextFileReader implementation which
+        # centralizes newline normalization and streaming behavior.
+        try:
+            # strip is a per-instance option on the external reader; the
+            # read() method takes no parameters.
+            reader = safe_io_text_file_reader.SafeTextFileReader(effective_file_path, encoding=encoding)
+            return reader.line_count()
+
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
 
     @classmethod
     def preview(
@@ -118,20 +183,43 @@ class TextFileHelper:
             SplurgeDsvFileEncodingError: If the file cannot be decoded using the
                 provided ``encoding``.
             SplurgeDsvPathValidationError: If path validation fails.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release.
         """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "TextFileHelper.preview() is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         if max_lines < 1:
             raise SplurgeDsvParameterError(
                 "TextFileHelper.preview: max_lines is less than 1", details="max_lines must be at least 1"
             )
 
         # Validate file path
-        validated_path = PathValidator.validate_path(
+        effective_file_path = cls._validate_path(
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
-        reader = SafeTextFileReader(validated_path, encoding=encoding)
-        return reader.preview(max_lines=max_lines, strip=strip, skip_header_rows=skip_header_rows)
+
+        try:
+            # preview's behavior is controlled by the reader instance options.
+            reader = safe_io_text_file_reader.SafeTextFileReader(
+                effective_file_path, encoding=encoding, strip=strip, skip_header_lines=skip_header_rows
+            )
+            return reader.preview(max_lines=max_lines)
+
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
 
     @classmethod
     def read_as_stream(
@@ -170,25 +258,54 @@ class TextFileHelper:
             SplurgeDsvFileEncodingError: If the file cannot be decoded using the
                 provided ``encoding``.
             SplurgeDsvPathValidationError: If path validation fails.
+            SplurgeDsvError: For other unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
-        # Allow small chunk sizes for testing, but enforce minimum for performance
-        # Only enforce minimum if chunk_size is "moderately small" (to prevent accidental small chunks)
-        if chunk_size >= 10:  # If someone sets a chunk size >= 10, enforce minimum for performance
-            chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
-        # For very small chunk sizes (like 1-9), allow them (useful for testing)
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "TextFileHelper.read_as_stream() is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Enforce the external library's minimum chunk size. We always delegate
+        # chunking behavior to the underlying implementation; the external
+        # library defines a MIN_CHUNK_SIZE (default 10) and DEFAULT_CHUNK_SIZE
+        # (default 500).
+        min_chunk = safe_io_text_file_reader.MIN_CHUNK_SIZE
+        chunk_size = max(chunk_size, min_chunk)
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
         # Validate file path
-        validated_path = PathValidator.validate_path(
+        effective_file_path = cls._validate_path(
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
         # Use SafeTextFileReader to centralize newline normalization and streaming behavior.
-        reader = SafeTextFileReader(validated_path, encoding=encoding)
-        yield from reader.read_as_stream(
-            strip=strip, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows, chunk_size=chunk_size
-        )
+        # Pass chunk_size through so the underlying implementation can honor it.
+        try:
+            # All per-call options are passed to the constructor; the
+            # iterator returned by read_as_stream() accepts no parameters.
+            reader = safe_io_text_file_reader.SafeTextFileReader(
+                effective_file_path,
+                encoding=encoding,
+                strip=strip,
+                skip_header_lines=skip_header_rows,
+                skip_footer_lines=skip_footer_rows,
+                chunk_size=chunk_size,
+            )
+            yield from reader.read_as_stream()
+
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
 
     @classmethod
     def read(
@@ -224,17 +341,40 @@ class TextFileHelper:
             SplurgeDsvFileEncodingError: If the file cannot be decoded using the
                 provided ``encoding``.
             SplurgeDsvPathValidationError: If path validation fails.
+            SplurgeDsvError: For other unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "TextFileHelper.read() is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         # Validate file path
-        validated_path = PathValidator.validate_path(
+        effective_file_path = cls._validate_path(
             Path(file_path), must_exist=True, must_be_file=True, must_be_readable=True
         )
 
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
-        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
-        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+        try:
+            reader = safe_io_text_file_reader.SafeTextFileReader(
+                effective_file_path,
+                encoding=encoding,
+                strip=strip,
+                skip_header_lines=skip_header_rows,
+                skip_footer_lines=skip_footer_rows,
+            )
+            return reader.read()
 
-        reader = SafeTextFileReader(validated_path, encoding=encoding)
-        return reader.read(strip=strip, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows)
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex

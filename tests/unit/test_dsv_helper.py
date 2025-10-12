@@ -85,12 +85,12 @@ class TestDsvHelperParse:
     def test_parse_empty_string(self) -> None:
         """Test parsing empty string."""
         result = DsvHelper.parse("", delimiter=",")
-        assert result == []
+        assert result == [""]
 
     def test_parse_empty_string_stripped(self) -> None:
         """Test parsing empty string with strip."""
         result = DsvHelper.parse("   ", delimiter=",", strip=True)
-        assert result == []
+        assert result == [""]
 
     def test_parse_single_token(self) -> None:
         """Test parsing single token."""
@@ -148,7 +148,7 @@ class TestDsvHelperParses:
         """Test parsing list with empty strings."""
         content = ["", "a,b", ""]
         result = DsvHelper.parses(content, delimiter=",")
-        expected = [[], ["a", "b"], []]
+        expected = [[""], ["a", "b"], [""]]
         assert result == expected
 
     def test_parses_with_different_delimiters(self) -> None:

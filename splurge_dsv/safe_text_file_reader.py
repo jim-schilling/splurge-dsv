@@ -1,177 +1,403 @@
-"""Safe text file reader utilities.
+"""Compatibility shim for safe text file reader using splurge_safe_io.
 
-This module implements :class:`SafeTextFileReader`, a small helper that reads
-text files in binary mode and performs deterministic newline normalization.
-It intentionally decodes bytes explicitly to avoid platform newline
-translation side-effects and centralizes encoding error handling into a
-package-specific exception type.
-
-Public API summary:
-        - SafeTextFileReader: Read, preview, and stream text files with normalized
-            newlines and optional header/footer skipping.
-        - open_text: Context manager returning an in-memory text stream for
-            callers that expect a file-like object.
-
-Example:
-        reader = SafeTextFileReader("data.csv", encoding="utf-8")
-        lines = reader.read()
-
-License: MIT
-
-Copyright (c) 2025 Jim Schilling
+This module preserves the public API of the original
+`splurge_dsv.safe_text_file_reader` while delegating implementation to
+`splurge_safe_io.safe_text_file_reader`. It maps the external package's
+exception types to the package's `splurge_dsv.exceptions` equivalents so
+existing callers continue to observe the same exception types.
 """
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
-from io import StringIO
 from pathlib import Path
 
-from splurge_dsv.exceptions import SplurgeDsvFileEncodingError
+import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader
+from splurge_safe_io import exceptions as safe_io_exceptions
+
+from splurge_dsv.exceptions import (
+    SplurgeDsvError,
+    SplurgeDsvFileDecodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFileOperationError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvPathValidationError,
+)
+
+# Re-export primary names for callers that import from splurge_dsv
 
 
 class SafeTextFileReader:
-    """Read text files with deterministic newline normalization.
+    """Minimal compatibility wrapper that delegates to
+    ``splurge_safe_io.safe_text_file_reader.SafeTextFileReader``.
 
-    The class reads raw bytes from disk and decodes using the provided
-    encoding. Newline sequences are normalized to ``\n`` (LF). Public
-    methods provide convenience wrappers for full reads, previews and
-    chunked streaming.
+    This shim is intentionally thin: it preserves the same constructor
+    parameters but forwards operations to the underlying implementation
+    unchanged. It enforces the external library's minimum chunk size so
+    callers cannot request a chunk size below ``MIN_CHUNK_SIZE``.
 
-    Args:
-        file_path (Path | str): Path to the file to read.
-        encoding (str): Encoding to use when decoding bytes (default: utf-8).
-
-    Example:
-        reader = SafeTextFileReader("/tmp/data.csv", encoding="utf-8")
-        rows = reader.read(skip_header_rows=1)
+    **Deprecated:** SafeTextFileReader is deprecated and will be removed in a future release. Consider using
+    splurge-safe-io directly.
     """
 
-    def __init__(self, file_path: Path | str, *, encoding: str = "utf-8") -> None:
-        self.path = Path(file_path)
-        self.encoding = encoding
+    def __init__(
+        self,
+        file_path: Path | str,
+        *,
+        encoding: str = safe_io_text_file_reader.DEFAULT_ENCODING,
+        strip: bool = False,
+        skip_header_lines: int = 0,
+        skip_footer_lines: int = 0,
+        chunk_size: int | None = None,
+        buffer_size: int | None = None,
+    ) -> None:
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileReader is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-    def _read_text(self) -> str:
-        """Read the file bytes and return decoded text with no newline normalization applied.
+        # Use the external defaults when caller does not provide a value.
+        if chunk_size is None:
+            chunk_size = getattr(safe_io_text_file_reader, "DEFAULT_CHUNK_SIZE", 500)
 
-        Returns:
-            Decoded text (str).
+        # Enforce the external minimum chunk size
+        min_chunk = getattr(safe_io_text_file_reader, "MIN_CHUNK_SIZE", 10)
+        if chunk_size < min_chunk:
+            chunk_size = min_chunk
+
+        if buffer_size is None:
+            buffer_size = getattr(safe_io_text_file_reader, "DEFAULT_BUFFER_SIZE", 16384)
+
+        try:
+            # Construct the external implementation and delegate to it.
+            self._impl = safe_io_text_file_reader.SafeTextFileReader(
+                file_path,
+                encoding=encoding,
+                strip=strip,
+                skip_header_lines=skip_header_lines,
+                skip_footer_lines=skip_footer_lines,
+                chunk_size=chunk_size,
+                buffer_size=buffer_size,
+            )
+
+        except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+            raise SplurgeDsvPathValidationError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileNotFoundError as e:
+            raise SplurgeDsvFileNotFoundError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+            raise SplurgeDsvFilePermissionError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
+
+    def read(
+        self,
+        *,
+        strip: bool | None = None,
+        skip_header_rows: int | None = None,
+        skip_footer_rows: int | None = None,
+        chunk_size: int | None = None,
+    ) -> list[str]:
+        """Read and return all logical lines, preserving optional per-call overrides.
+
+        Accepts legacy per-call parameters (strip, skip_header_rows,
+        skip_footer_rows, chunk_size) and creates a temporary external
+        implementation when any of them differ from the instance's
+        configuration.
+
+        Args:
+            strip: If True, strips leading and trailing whitespace from each line.
+            skip_header_rows: Number of header lines to skip.
+            skip_footer_rows: Number of footer lines to skip.
+            chunk_size: Number of lines to read per chunk when reading in streaming mode.
+
+        Returns: A list of logical lines read from the file.
 
         Raises:
-            SplurgeDsvFileEncodingError: If decoding fails or the file cannot
-                be read.
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileEncodingError: If a decoding error occurs using the
+                provided ``encoding``.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If there are insufficient permissions to read the file.
+            SplurgeDsvError: For other unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileReader.read is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         try:
-            # Read raw bytes and decode explicitly to avoid the platform's
-            # text-mode newline translations which can alter mixed line endings.
-            with self.path.open("rb") as fh:
-                raw = fh.read()
-            return raw.decode(self.encoding)
+            # Determine effective values
+            effective_strip = self._impl.strip if strip is None else strip
+            effective_skip_header = self._impl.skip_header_lines if skip_header_rows is None else skip_header_rows
+            effective_skip_footer = self._impl.skip_footer_lines if skip_footer_rows is None else skip_footer_rows
+            effective_chunk = (
+                getattr(self._impl, "chunk_size", getattr(safe_io_text_file_reader, "DEFAULT_CHUNK_SIZE", 500))
+                if chunk_size is None
+                else chunk_size
+            )
+
+            # Enforce external minimum chunk size
+            min_chunk = getattr(safe_io_text_file_reader, "MIN_CHUNK_SIZE", 10)
+            if effective_chunk < min_chunk:
+                effective_chunk = min_chunk
+
+            # If the call-time args match the stored impl, use it directly
+            if (
+                effective_strip == self._impl.strip
+                and effective_skip_header == self._impl.skip_header_lines
+                and effective_skip_footer == self._impl.skip_footer_lines
+                and effective_chunk == getattr(self._impl, "chunk_size", None)
+            ):
+                impl = self._impl
+            else:
+                impl = safe_io_text_file_reader.SafeTextFileReader(
+                    getattr(self._impl, "file_path", None) or None,
+                    encoding=self._impl.encoding,
+                    strip=effective_strip,
+                    skip_header_lines=effective_skip_header,
+                    skip_footer_lines=effective_skip_footer,
+                    chunk_size=effective_chunk,
+                    buffer_size=getattr(self._impl, "buffer_size", None),
+                )
+            return impl.read()
+
+        except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+            raise SplurgeDsvPathValidationError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileDecodingError as e:
+            raise SplurgeDsvFileDecodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileNotFoundError as e:
+            raise SplurgeDsvFileNotFoundError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+            raise SplurgeDsvFilePermissionError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
         except Exception as e:
-            raise SplurgeDsvFileEncodingError(f"Encoding error reading file: {self.path}", details=str(e)) from e
+            raise SplurgeDsvError(str(e)) from e
 
-    def read(self, *, strip: bool = True, skip_header_rows: int = 0, skip_footer_rows: int = 0) -> list[str]:
-        """Read the entire file and return a list of normalized lines.
-
-        Newlines are normalized to ``\n`` and optional header/footer rows
-        can be skipped. If ``strip`` is True, whitespace surrounding each
-        line is removed.
-
+    def preview(
+        self, max_lines: int = 100, *, strip: bool | None = None, skip_header_rows: int | None = None
+    ) -> list[str]:
+        """Read and return up to max_lines logical lines from the start of the file.
         Args:
-            strip (bool): Strip whitespace from each line (default: True).
-            skip_header_rows (int): Number of rows to skip at the start.
-            skip_footer_rows (int): Number of rows to skip at the end.
+            max_lines: Maximum number of lines to read.
+            strip: If True, strips leading and trailing whitespace from each line.
+            skip_header_rows: Number of header lines to skip.
 
-        Returns:
-            List of lines as strings.
+        Returns: A list of logical lines read from the start of the file, up to max_lines.
+
+        Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileDecodingError: If a decoding error occurs using the
+                provided ``encoding``.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If there are insufficient permissions to read the file.
+            SplurgeDsvError: For other unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
-        text = self._read_text()
-        # Normalize newlines to LF
-        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-        lines = normalized.splitlines()
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileReader.preview is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        if skip_header_rows:
-            lines = lines[skip_header_rows:]
-        if skip_footer_rows:
-            if skip_footer_rows >= len(lines):
-                return []
-            lines = lines[:-skip_footer_rows]
+        try:
+            effective_strip = self._impl.strip if strip is None else strip
+            effective_skip_header = self._impl.skip_header_lines if skip_header_rows is None else skip_header_rows
 
-        if strip:
-            return [ln.strip() for ln in lines]
-        return list(lines)
+            if effective_strip == self._impl.strip and effective_skip_header == self._impl.skip_header_lines:
+                impl = self._impl
+            else:
+                impl = safe_io_text_file_reader.SafeTextFileReader(
+                    getattr(self._impl, "file_path", None) or None,
+                    encoding=self._impl.encoding,
+                    strip=effective_strip,
+                    skip_header_lines=effective_skip_header,
+                    skip_footer_lines=self._impl.skip_footer_lines,
+                    chunk_size=getattr(
+                        self._impl, "chunk_size", getattr(safe_io_text_file_reader, "DEFAULT_CHUNK_SIZE", 500)
+                    ),
+                    buffer_size=getattr(self._impl, "buffer_size", None),
+                )
+            return impl.preview(max_lines=max_lines)
 
-    def preview(self, max_lines: int = 100, *, strip: bool = True, skip_header_rows: int = 0) -> list[str]:
-        """Return the first ``max_lines`` lines of the file after normalization.
-
-        Args:
-            max_lines (int): Maximum number of lines to return.
-            strip (bool): Strip whitespace from each returned line.
-            skip_header_rows (int): Number of header rows to skip before previewing.
-
-        Returns:
-            A list of preview lines.
-        """
-        text = self._read_text()
-        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-        lines = normalized.splitlines()
-        if skip_header_rows:
-            lines = lines[skip_header_rows:]
-        if max_lines < 1:
-            return []
-        result = lines[:max_lines]
-        return [ln.strip() for ln in result] if strip else list(result)
+        except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+            raise SplurgeDsvPathValidationError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileDecodingError as e:
+            raise SplurgeDsvFileDecodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileNotFoundError as e:
+            raise SplurgeDsvFileNotFoundError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+            raise SplurgeDsvFilePermissionError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
     def read_as_stream(
-        self, *, strip: bool = True, skip_header_rows: int = 0, skip_footer_rows: int = 0, chunk_size: int = 500
+        self,
+        *,
+        strip: bool | None = None,
+        skip_header_rows: int | None = None,
+        skip_footer_rows: int | None = None,
+        chunk_size: int | None = None,
     ) -> Iterator[list[str]]:
-        """Yield chunks of lines from the file.
-
-        This convenience method currently reads the decoded file into memory
-        and yields chunks of ``chunk_size`` lines. For very large files this
-        could be optimized to stream from disk without full materialization.
+        """Read and yield logical lines in chunks, preserving optional per-call overrides.
 
         Args:
-            strip (bool): Whether to strip whitespace from each line.
-            skip_header_rows (int): Number of header rows to skip.
-            skip_footer_rows (int): Number of footer rows to skip.
-            chunk_size (int): Number of lines per yielded chunk.
+            strip: If True, strips leading and trailing whitespace from each line.
+            skip_header_rows: Number of header lines to skip.
+            skip_footer_rows: Number of footer lines to skip.
+            chunk_size: Number of lines to read per chunk when reading in streaming mode.
 
-        Yields:
-            Lists of lines (each list length <= chunk_size).
+        Yields: Lists of logical lines read from the file in chunks.
+
+        Raises:
+            SplurgeDsvFileDecodingError: If a decoding error occurs using the
+                provided ``encoding``.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If there are insufficient permissions to read the file.
+            SplurgeDsvError: For other unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
-        lines = self.read(strip=strip, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows)
-        chunk: list[str] = []
-        for ln in lines:
-            chunk.append(ln)
-            if len(chunk) >= chunk_size:
-                yield chunk
-                chunk = []
-        if chunk:
-            yield chunk
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileReader.read_as_stream is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        try:
+            effective_strip = self._impl.strip if strip is None else strip
+            effective_skip_header = self._impl.skip_header_lines if skip_header_rows is None else skip_header_rows
+            effective_skip_footer = self._impl.skip_footer_lines if skip_footer_rows is None else skip_footer_rows
+            effective_chunk = (
+                getattr(self._impl, "chunk_size", getattr(safe_io_text_file_reader, "DEFAULT_CHUNK_SIZE", 500))
+                if chunk_size is None
+                else chunk_size
+            )
+
+            min_chunk = getattr(safe_io_text_file_reader, "MIN_CHUNK_SIZE", 10)
+            if effective_chunk < min_chunk:
+                effective_chunk = min_chunk
+
+            if (
+                effective_strip == self._impl.strip
+                and effective_skip_header == self._impl.skip_header_lines
+                and effective_skip_footer == self._impl.skip_footer_lines
+                and effective_chunk == getattr(self._impl, "chunk_size", None)
+            ):
+                impl = self._impl
+            else:
+                impl = safe_io_text_file_reader.SafeTextFileReader(
+                    getattr(self._impl, "file_path", None) or None,
+                    encoding=self._impl.encoding,
+                    strip=effective_strip,
+                    skip_header_lines=effective_skip_header,
+                    skip_footer_lines=effective_skip_footer,
+                    chunk_size=effective_chunk,
+                    buffer_size=getattr(self._impl, "buffer_size", None),
+                )
+
+            # Wrap the external iterator so we can ensure any underlying
+            # resources are cleaned up when the consumer stops iterating.
+            iterator = impl.read_as_stream()
+            try:
+                yield from iterator
+            finally:
+                # Attempt to close the implementation if it provides a close
+                # method. This is defensive: the external implementation may
+                # hold file handles open until explicitly closed.
+                for candidate in (impl, getattr(self, "_impl", None)):
+                    try:
+                        if candidate is None:
+                            continue
+                        close_fn = getattr(candidate, "close", None)
+                        if callable(close_fn):
+                            close_fn()
+                    except Exception:
+                        # Best-effort cleanup; don't surface cleanup errors
+                        # to callers of the streaming iterator.
+                        pass
+
+        except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+            raise SplurgeDsvPathValidationError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileDecodingError as e:
+            raise SplurgeDsvFileDecodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileNotFoundError as e:
+            raise SplurgeDsvFileNotFoundError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+            raise SplurgeDsvFilePermissionError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
 
 @contextmanager
-def open_text(file_path: Path | str, *, encoding: str = "utf-8"):
-    """Context manager returning a text stream (io.StringIO) with normalized newlines.
+def open_text(file_path: Path | str, *, encoding: str = safe_io_text_file_reader.DEFAULT_ENCODING):
+    """Context manager that yields a StringIO with normalized text.
 
-    Useful when an API expects a file-like object. The returned StringIO
-    contains the normalized text (LF newlines) and is closed automatically
-    when the context exits.
-
-    Args:
-        file_path: Path to the file to open.
-        encoding: Encoding to decode the file with.
-
-    Yields:
-        io.StringIO: In-memory text buffer with normalized newlines.
+    Delegates to ``open_safe_text_reader`` when available and maps
+    exceptions to splurge_dsv types.
     """
-    reader = SafeTextFileReader(file_path, encoding=encoding)
-    text_lines = reader.read(strip=False)
-    text = "\n".join(text_lines)
-    sio = StringIO(text)
     try:
-        yield sio
-    finally:
-        sio.close()
+        # We require the external helper to be present; use its signature
+        # defaults for the additional keyword arguments so our API matches
+        # the external implementation exactly.
+        import inspect as _inspect
+
+        sig = _inspect.signature(safe_io_text_file_reader.open_safe_text_reader)
+        strip_param = sig.parameters.get("strip")
+        skip_header_param = sig.parameters.get("skip_header_lines")
+        skip_footer_param = sig.parameters.get("skip_footer_lines")
+
+        strip_default = (
+            strip_param.default
+            if strip_param is not None and strip_param.default is not _inspect._empty
+            else getattr(safe_io_text_file_reader, "DEFAULT_STRIP", False)
+        )
+        skip_header_default = (
+            skip_header_param.default
+            if skip_header_param is not None and skip_header_param.default is not _inspect._empty
+            else getattr(safe_io_text_file_reader, "DEFAULT_SKIP_HEADER_LINES", 0)
+        )
+        skip_footer_default = (
+            skip_footer_param.default
+            if skip_footer_param is not None and skip_footer_param.default is not _inspect._empty
+            else getattr(safe_io_text_file_reader, "DEFAULT_SKIP_FOOTER_LINES", 0)
+        )
+
+        # Respect the external defaults unless caller overrides via kwargs
+        # (exposed as explicit parameters to this function).
+        with safe_io_text_file_reader.open_safe_text_reader(
+            file_path,
+            encoding=encoding,
+            strip=strip_default,
+            skip_header_lines=skip_header_default,
+            skip_footer_lines=skip_footer_default,
+        ) as sio:
+            yield sio
+
+    except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+        raise SplurgeDsvPathValidationError(str(e)) from e
+    except safe_io_exceptions.SplurgeSafeIoFileDecodingError as e:
+        raise SplurgeDsvFileDecodingError(str(e)) from e
+    except safe_io_exceptions.SplurgeSafeIoFileNotFoundError as e:
+        raise SplurgeDsvFileNotFoundError(str(e)) from e
+    except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+        raise SplurgeDsvFilePermissionError(str(e)) from e
+    except safe_io_exceptions.SplurgeSafeIoOsError as e:
+        raise SplurgeDsvFileOperationError(str(e)) from e
+    except Exception as e:
+        raise SplurgeDsvError(str(e)) from e

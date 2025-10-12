@@ -65,6 +65,15 @@ class SplurgeDsvFileNotFoundError(SplurgeDsvFileOperationError):
     """
 
 
+class SplurgeDsvFileExistsError(SplurgeDsvFileOperationError):
+    """Raised when attempting to create a file that already exists.
+
+    This typically maps to ``FileExistsError`` semantics but uses the
+    package-specific exception hierarchy so callers can distinguish
+    file errors from other error types.
+    """
+
+
 class SplurgeDsvFilePermissionError(SplurgeDsvFileOperationError):
     """Raised for permission or access-related file errors.
 
@@ -73,10 +82,18 @@ class SplurgeDsvFilePermissionError(SplurgeDsvFileOperationError):
     """
 
 
-class SplurgeDsvFileEncodingError(SplurgeDsvFileOperationError):
+class SplurgeDsvFileDecodingError(SplurgeDsvFileOperationError):
     """Raised when decoding or encoding a text file fails.
 
     The exception typically wraps the underlying decoding error and
+    provides a descriptive message and optional details for diagnostics.
+    """
+
+
+class SplurgeDsvFileEncodingError(SplurgeDsvFileOperationError):
+    """Raised when encoding a text file fails.
+
+    The exception typically wraps the underlying encoding error and
     provides a descriptive message and optional details for diagnostics.
     """
 

@@ -58,8 +58,14 @@ class StringTokenizer:
         if delimiter is None or delimiter == "":
             raise SplurgeDsvParameterError("delimiter cannot be empty or None")
 
+        # If stripping is enabled and the input is only whitespace (or
+        # empty), treat it as a single empty token rather than returning an
+        # empty list. Returning [] causes downstream code that expects the
+        # same number of columns as the header to raise IndexError. The
+        # external safe reader yields empty strings for blank lines, so we
+        # preserve that semantic here.
         if strip and not content.strip():
-            return []
+            return [""]
 
         result: list[str] = content.split(delimiter)
         if strip:

@@ -12,11 +12,22 @@ This module is licensed under the MIT License.
 import warnings
 from collections.abc import Iterator
 from os import PathLike
+from pathlib import Path
+
+import splurge_safe_io.constants as safe_io_constants
+import splurge_safe_io.path_validator as safe_io_path_validator
+import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import (
+    SplurgeDsvError,
+    SplurgeDsvFileDecodingError,
+    SplurgeDsvFileNotFoundError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvParameterError,
+    SplurgeDsvPathValidationError,
+)
 from splurge_dsv.string_tokenizer import StringTokenizer
-from splurge_dsv.text_file_helper import TextFileHelper
 
 
 class DsvHelper:
@@ -27,11 +38,11 @@ class DsvHelper:
     Supports configurable delimiters, text bookends, and whitespace handling options.
     """
 
-    DEFAULT_CHUNK_SIZE = 500  # Default chunk size for streaming operations
-    DEFAULT_ENCODING = "utf-8"  # Default text encoding for file operations
-    DEFAULT_SKIP_HEADER_ROWS = 0  # Default number of header rows to skip
-    DEFAULT_SKIP_FOOTER_ROWS = 0  # Default number of footer rows to skip
-    DEFAULT_MIN_CHUNK_SIZE = 100
+    DEFAULT_CHUNK_SIZE = safe_io_constants.DEFAULT_CHUNK_SIZE
+    DEFAULT_ENCODING = "utf-8"
+    DEFAULT_SKIP_HEADER_ROWS = 0
+    DEFAULT_SKIP_FOOTER_ROWS = 0
+    DEFAULT_MIN_CHUNK_SIZE = safe_io_constants.MIN_CHUNK_SIZE
     DEFAULT_STRIP = True
     DEFAULT_BOOKEND_STRIP = True
 
@@ -124,10 +135,43 @@ class DsvHelper:
             for item in content
         ]
 
+    @staticmethod
+    def _validate_file_path(
+        file_path: Path | str, *, must_exist: bool = True, must_be_file: bool = True, must_be_readable: bool = True
+    ) -> Path:
+        """Validate the provided file path.
+
+        Args:
+            file_path: The file path to validate.
+
+        Returns:
+            A validated Path object.
+
+        Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If the file cannot be accessed due to permission restrictions
+            SplurgeDsvError: For other unexpected errors.
+        """
+        try:
+            effective_path = safe_io_path_validator.PathValidator.validate_path(
+                Path(file_path), must_exist=must_exist, must_be_file=must_be_file, must_be_readable=must_be_readable
+            )
+        except safe_io_path_validator.SplurgeSafeIoPathValidationError as ex:
+            raise SplurgeDsvPathValidationError(f"Invalid file path: {file_path}") from ex
+        except safe_io_path_validator.SplurgeSafeIoFileNotFoundError as ex:
+            raise SplurgeDsvFileNotFoundError(f"File not found: {file_path}") from ex
+        except safe_io_path_validator.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error validating file path: {file_path}") from ex
+
+        return effective_path
+
     @classmethod
     def parse_file(
         cls,
-        file_path: PathLike[str] | str,
+        file_path: PathLike[str] | Path | str,
         *,
         delimiter: str,
         strip: bool = DEFAULT_STRIP,
@@ -160,14 +204,33 @@ class DsvHelper:
         Raises:
             SplurgeDsvParameterError: If ``delimiter`` is empty or None.
             SplurgeDsvFileNotFoundError: If the file at ``file_path`` does not exist.
-            SplurgeDsvFilePermissionError: If the file cannot be accessed due to
-                permission restrictions.
-            SplurgeDsvFileEncodingError: If the file cannot be decoded using
-                the provided ``encoding``.
+            SplurgeDsvFilePermissionError: If the file cannot be accessed due to permission restrictions.
+            SplurgeDsvFileDecodingError: If the file cannot be decoded using the provided ``encoding``.
+            SplurgeDsvError: For other unexpected errors.
         """
-        lines: list[str] = TextFileHelper.read(
-            file_path, encoding=encoding, skip_header_rows=skip_header_rows, skip_footer_rows=skip_footer_rows
-        )
+        effective_file_path = cls._validate_file_path(Path(file_path))
+
+        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+
+        try:
+            reader = safe_io_text_file_reader.SafeTextFileReader(
+                effective_file_path,
+                encoding=encoding,
+                skip_header_lines=skip_header_rows,
+                skip_footer_lines=skip_footer_rows,
+                strip=strip,
+            )
+            lines: list[str] = reader.read()
+
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
 
         return cls.parses(lines, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip)
 
@@ -231,31 +294,43 @@ class DsvHelper:
             list[list[str]]: Parsed rows for each chunk.
 
         Raises:
-            SplurgeParameterError: If delimiter is empty or None.
-            SplurgeFileNotFoundError: If the file does not exist.
-            SplurgeFilePermissionError: If the file cannot be accessed.
-            SplurgeFileEncodingError: If the file cannot be decoded with the specified encoding.
+            SplurgeDsvParameterError: If delimiter is empty or None.
+            SplurgeDsvFileNotFoundError: If the file does not exist.
+            SplurgeDsvFilePermissionError: If the file cannot be accessed.
+            SplurgeDsvFileDecodingError: If the file cannot be decoded with the specified encoding.
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvError: For other unexpected errors.
         """
-        if delimiter is None or delimiter == "":
-            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
+
+        effective_file_path = cls._validate_file_path(Path(file_path))
 
         chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
         skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
-        # Use TextFileHelper.read_as_stream for consistent error handling
-        yield from (
-            cls._process_stream_chunk(
-                chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip
-            )
-            for chunk in TextFileHelper.read_as_stream(
-                file_path,
+        try:
+            reader = safe_io_text_file_reader.SafeTextFileReader(
+                effective_file_path,
                 encoding=encoding,
-                skip_header_rows=skip_header_rows,
-                skip_footer_rows=skip_footer_rows,
+                skip_header_lines=skip_header_rows,
+                skip_footer_lines=skip_footer_rows,
+                strip=strip,
                 chunk_size=chunk_size,
             )
-        )
+            yield from (
+                cls._process_stream_chunk(
+                    chunk, delimiter=delimiter, strip=strip, bookend=bookend, bookend_strip=bookend_strip
+                )
+                for chunk in reader.read_as_stream()
+            )
+        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
+            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
+            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
+        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
+            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except Exception as ex:
+            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
 
     @classmethod
     def parse_stream(
