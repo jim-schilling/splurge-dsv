@@ -86,6 +86,26 @@ class TestCliParseArguments:
         args = parse_arguments()
         assert args.bookend == '"'
 
+    def test_parse_arguments_with_new_flags(self, mocker) -> None:
+        """Test new CLI flags are parsed correctly."""
+        mocker.patch.object(
+            sys,
+            "argv",
+            [
+                "script",
+                "test.csv",
+                "--delimiter",
+                ",",
+                "--detect-normalize-columns",
+                "--raise-on-missing-columns",
+                "--raise-on-extra-columns",
+            ],
+        )
+        args = parse_arguments()
+        assert args.detect_normalize_columns
+        assert args.raise_on_missing_columns
+        assert args.raise_on_extra_columns
+
     def test_parse_arguments_with_no_strip_options(self, mocker) -> None:
         """Test argument parsing with no-strip options."""
         mocker.patch.object(sys, "argv", ["script", "test.csv", "--delimiter", ",", "--no-strip", "--no-bookend-strip"])

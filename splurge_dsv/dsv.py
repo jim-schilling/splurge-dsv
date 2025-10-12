@@ -43,6 +43,10 @@ class DsvConfig:
         skip_header_rows: Number of header rows to skip when reading files.
         skip_footer_rows: Number of footer rows to skip when reading files.
         chunk_size: Size of chunks for streaming operations.
+        detect_columns: Whether to auto-detect column count from data.
+        raise_on_missing_columns: If True, raise an error if rows have fewer columns than detected
+        raise_on_extra_columns: If True, raise an error if rows have more columns than detected
+        max_detect_chunks: Maximum number of chunks to scan for column detection
 
     Raises:
         SplurgeDsvParameterError: If delimiter is empty, chunk_size is too
@@ -57,6 +61,11 @@ class DsvConfig:
     skip_header_rows: int = 0
     skip_footer_rows: int = 0
     chunk_size: int = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
+    # Column normalization and detection flags
+    detect_columns: bool = False
+    raise_on_missing_columns: bool = False
+    raise_on_extra_columns: bool = False
+    max_detect_chunks: int = DsvHelper.MAX_DETECT_CHUNKS
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -173,6 +182,7 @@ class Dsv:
 
         Raises:
             SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvColumnMismatchError: If column validation fails.
         """
         return DsvHelper.parse(
             content,
@@ -180,6 +190,9 @@ class Dsv:
             strip=self.config.strip,
             bookend=self.config.bookend,
             bookend_strip=self.config.bookend_strip,
+            normalize_columns=0,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
         )
 
     def parses(self, content: list[str]) -> list[list[str]]:
@@ -192,6 +205,10 @@ class Dsv:
         Returns:
             List of lists of parsed strings
 
+        Raises:
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+
         Example:
             >>> parser = Dsv(DsvConfig(delimiter=","))
             >>> parser.parses(["a,b", "c,d"])
@@ -203,6 +220,10 @@ class Dsv:
             strip=self.config.strip,
             bookend=self.config.bookend,
             bookend_strip=self.config.bookend_strip,
+            normalize_columns=0,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
+            detect_columns=self.config.detect_columns,
         )
 
     def parse_file(self, file_path: PathLike[str] | Path | str) -> list[list[str]]:
@@ -219,6 +240,8 @@ class Dsv:
             SplurgeDsvFileNotFoundError: If the file cannot be found.
             SplurgeDsvFilePermissionError: If the file cannot be read.
             SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
             SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file(
@@ -230,6 +253,9 @@ class Dsv:
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
             skip_footer_rows=self.config.skip_footer_rows,
+            detect_columns=self.config.detect_columns,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
         )
 
     def parse_file_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
@@ -250,6 +276,8 @@ class Dsv:
             SplurgeDsvFileNotFoundError: If the file cannot be found.
             SplurgeDsvFilePermissionError: If the file cannot be read.
             SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
             SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file_stream(
@@ -261,5 +289,9 @@ class Dsv:
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
             skip_footer_rows=self.config.skip_footer_rows,
+            detect_columns=self.config.detect_columns,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
             chunk_size=self.config.chunk_size,
+            max_detect_chunks=self.config.max_detect_chunks,
         )

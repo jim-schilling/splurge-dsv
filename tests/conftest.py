@@ -1,23 +1,69 @@
-"""
-Shared test configuration and Hypothesis strategies for splurge-dsv testing.
+import argparse
+import importlib
+import string
+import sys
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+from hypothesis import strategies as st
+
+from splurge_dsv.dsv import DsvConfig
+
+
+@pytest.fixture
+def cli_args() -> Callable[[str], argparse.Namespace]:
+    """Return a small factory that builds a fully-populated argparse.Namespace
+    like the tests previously constructed inline. Tests can call this
+    fixture as a function: args = cli_args(path)
+    """
+
+    def _build(file_path: str) -> argparse.Namespace:
+        return argparse.Namespace(
+            file_path=str(file_path),
+            delimiter=",",
+            bookend=None,
+            no_strip=False,
+            no_bookend_strip=False,
+            encoding="utf-8",
+            skip_header=0,
+            skip_footer=0,
+            stream=False,
+            chunk_size=500,
+            output_format="table",
+            detect_normalize_columns=False,
+            raise_on_missing_columns=False,
+            raise_on_extra_columns=False,
+            max_detect_chunks=None,
+        )
+
+    return _build
+
+
+@pytest.fixture
+def reload_pkg_under() -> Callable[[], object]:
+    """Return a callable that reloads the splurge_dsv package while
+    ensuring any existing import is restored. Tests that need to reload
+    the package under modified environment (monkeypatching Path.cwd, os.chdir,
+    etc.) can call this function to safely import the package.
+    """
+
+    def _reload():
+        orig = sys.modules.pop("splurge_dsv", None)
+        try:
+            return importlib.import_module("splurge_dsv")
+        finally:
+            if orig is not None:
+                sys.modules["splurge_dsv"] = orig
+
+    return _reload
+
+
+"""Shared test configuration and Hypothesis strategies for splurge-dsv testing.
 
 This module provides common test fixtures, Hypothesis strategies, and
 configuration used across all test modules.
 """
-
-# Standard library imports
-import string
-from pathlib import Path
-
-# Third-party imports
-import pytest
-from hypothesis import strategies as st
-
-# Local imports
-from splurge_dsv.dsv import DsvConfig
-
-# Hypothesis Strategies
-# =====================
 
 
 @st.composite

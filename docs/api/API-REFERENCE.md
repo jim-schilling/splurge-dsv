@@ -20,7 +20,7 @@ reference, examples, and expected errors.
   - `Dsv`
   - `DsvHelper`
 - File helpers
-  - `TextFileHelper`
+  - `StringTokenizer`
   - `SafeTextFileReader` / `open_text`
   - `SafeTextFileWriter` / `open_text_writer`
 - Tokenization
@@ -52,7 +52,7 @@ importable using:
 
 ```python
 from splurge_dsv import Dsv, DsvConfig, DsvHelper
-from splurge_dsv import TextFileHelper, StringTokenizer, PathValidator
+from splurge_dsv import StringTokenizer
 ```
 
 ---
@@ -161,29 +161,13 @@ for chunk in DsvHelper.parse_file_stream("big.csv", delimiter=","):
 
 ## File helpers
 
-### TextFileHelper
+### File readers
 
-Utility class exposing file-related helpers. Important methods include:
-
-- `TextFileHelper.line_count(path, encoding='utf-8') -> int`
-- `TextFileHelper.preview(path, max_lines=100, strip=True, encoding='utf-8') -> list[str]`
-- `TextFileHelper.read(path, strip=True, encoding='utf-8', skip_header_rows=0, skip_footer_rows=0) -> list[str]`
-- `TextFileHelper.read_as_stream(path, strip=True, encoding='utf-8', chunk_size=500) -> Iterator[list[str]]`
-
-Behavior notes:
-
-- Line endings are normalized to LF when reading; the read functions return
-  logical lines (platform-independent).
-- Footer skipping is implemented using a sliding window to avoid loading the
-  full file into memory.
-
-Example — preview:
-
-```python
-from splurge_dsv import TextFileHelper
-
-preview_lines = TextFileHelper.preview("data.csv", max_lines=10)
-```
+Reading and streaming text files is provided by the separate dependency
+`splurge-safe-io` (the package exposes `SafeTextFileReader`, `open_text`,
+and related helpers). `DsvHelper` uses these readers internally; callers
+should prefer the high-level `Dsv`/`DsvHelper` APIs unless they need the
+lower-level reader primitives directly.
 
 ### SafeTextFileReader / open_text
 
@@ -247,22 +231,10 @@ StringTokenizer.parse('a,b,c', delimiter=',')
 
 ## Path validation
 
-### PathValidator
-
-Utilities for secure path handling used throughout the package. Main
-behaviors:
-
-- `validate_path(path, must_exist=False, must_be_file=False, must_be_readable=False, ...) -> Path`
-- `sanitize_filename(name: str) -> str`
-- `is_safe_path(path: str) -> bool`
-
-Examples & notes:
-
-```python
-from splurge_dsv import PathValidator
-
-PathValidator.validate_path("./data.csv", must_exist=True, must_be_file=True)
-```
+Path validation and secure path utilities are provided by the `splurge-safe-io`
+dependency; callers can use `splurge_safe_io.path_validator.PathValidator` for
+consistent behavior in application code. The library maps path validation
+errors from that dependency into `SplurgeDsvPathValidationError`.
 
 ---
 
@@ -297,13 +269,12 @@ errors and how to handle them:
 - `SplurgeDsvFileNotFoundError` — File not found.
 - `SplurgeDsvFilePermissionError` — File cannot be read/written due to
   permissions.
-- `SplurgeDsvFileEncodingError` — File encoding cannot be decoded.
+- `SplurgeDsvFileDecodingError` — File decoding / encoding issues.
 - `SplurgeDsvPathValidationError` — Path validation failed (unsafe path,
   traversal attempts, etc.).
 - `SplurgeDsvParsingError` — Generic parsing failure.
+- `SplurgeDsvColumnMismatchError` — When a row has a different number of columns than expected.
 - `SplurgeDsvStreamingError` — Errors while streaming large files.
-- `SplurgeDsvResourceError` / `SplurgeDsvResourceAcquisitionError` /
-  `SplurgeDsvResourceReleaseError` — Resource acquisition/release failures.
 
 Handling pattern:
 

@@ -46,6 +46,7 @@ except Exception:
 from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
+    SplurgeDsvColumnMismatchError,
     SplurgeDsvConfigurationError,
     SplurgeDsvDataProcessingError,
     # canonical SplurgeDsv* exception names
@@ -89,6 +90,7 @@ __all__ = [
     "SplurgeDsvPathValidationError",
     "SplurgeDsvDataProcessingError",
     "SplurgeDsvParsingError",
+    "SplurgeDsvColumnMismatchError",
     "SplurgeDsvTypeConversionError",
     "SplurgeDsvStreamingError",
     "SplurgeDsvConfigurationError",

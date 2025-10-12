@@ -1,4 +1,3 @@
-import argparse
 import json
 
 import pytest
@@ -8,25 +7,9 @@ from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeDsvFileDecodingError
 
 
-def _base_args(file_path: str) -> argparse.Namespace:
-    return argparse.Namespace(
-        file_path=str(file_path),
-        delimiter=",",
-        bookend=None,
-        no_strip=False,
-        no_bookend_strip=False,
-        encoding="utf-8",
-        skip_header=0,
-        skip_footer=0,
-        stream=False,
-        chunk_size=500,
-        output_format="table",
-    )
-
-
-def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys):
+def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys, cli_args):
     missing = tmp_path / "does_not_exist.csv"
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: _base_args(missing))
+    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: cli_args(missing))
 
     rc = run_cli()
     captured = capsys.readouterr()
@@ -35,11 +18,11 @@ def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys):
 
 
 @pytest.mark.parametrize("output_format", ["table", "json", "ndjson"])
-def test_run_cli_parse_file_outputs(output_format, monkeypatch, tmp_path, capsys):
+def test_run_cli_parse_file_outputs(output_format, monkeypatch, tmp_path, capsys, cli_args):
     f = tmp_path / "data.csv"
     f.write_text("a,b\n1,2\n3,4\n")
 
-    args = _base_args(f)
+    args = cli_args(f)
     args.output_format = output_format
     monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
 
@@ -66,13 +49,13 @@ def test_run_cli_parse_file_outputs(output_format, monkeypatch, tmp_path, capsys
 
 
 @pytest.mark.parametrize("output_format", ["table", "json", "ndjson"])
-def test_run_cli_streaming_outputs(output_format, monkeypatch, tmp_path, capsys):
+def test_run_cli_streaming_outputs(output_format, monkeypatch, tmp_path, capsys, cli_args):
     # Create a file with several rows to force streaming chunking
     f = tmp_path / "stream.csv"
     rows = ["h1,h2"] + [f"v{i},w{i}" for i in range(1, 5)]
     f.write_text("\n".join(rows) + "\n")
 
-    args = _base_args(f)
+    args = cli_args(f)
     args.stream = True
     # Use the library minimum chunk size to avoid parameter validation
     args.chunk_size = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
@@ -162,7 +145,7 @@ def test_parse_file_stream_raises_decoding_error_monkeypatched(monkeypatch, tmp_
         list(DsvHelper.parse_file_stream(p, delimiter=","))
 
 
-def test_stream_chunk_materialization_and_mismatch(monkeypatch, tmp_path, capsys):
+def test_stream_chunk_materialization_and_mismatch(monkeypatch, tmp_path, capsys, cli_args):
     """Ensure that parse_file_stream handles generator chunks and mismatched row lengths."""
     p = tmp_path / "mismatch.csv"
     p.write_text("h1,h2\n1,2\n3,4\n")
@@ -181,7 +164,7 @@ def test_stream_chunk_materialization_and_mismatch(monkeypatch, tmp_path, capsys
     monkeypatch.setattr(dmod.Dsv, "parse_file_stream", fake_parse_file_stream, raising=False)
 
     # Run through the CLI path to ensure mismatch inspection branch is exercised
-    args = _base_args(p)
+    args = cli_args(p)
     args.stream = True
     args.chunk_size = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
     args.output_format = "table"

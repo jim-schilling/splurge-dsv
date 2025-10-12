@@ -12,7 +12,7 @@ import pytest
 
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import SplurgeDsvColumnMismatchError, SplurgeDsvParameterError
 
 
 class TestDsvHelperParse:
@@ -208,5 +208,29 @@ class TestDsvHelperEdgeCases:
         """Test parsing with tabs in content."""
         result = DsvHelper.parse("a\t,b\t,c", delimiter=",", strip=False)
         assert result == ["a\t", "b\t", "c"]
+
+    def test_parse_normalize_padding_and_truncate(self) -> None:
+        """Test normalize_columns pads and truncates correctly."""
+        padded = DsvHelper.parse("a,b", delimiter=",", normalize_columns=3)
+        assert padded == ["a", "b", ""]
+
+        truncated = DsvHelper.parse("a,b,c,d", delimiter=",", normalize_columns=3)
+        assert truncated == ["a", "b", "c"]
+
+    def test_parse_validate_raises(self) -> None:
+        """Test that validation flags raise parsing errors appropriately."""
+        with pytest.raises(SplurgeDsvColumnMismatchError):
+            DsvHelper.parse("a,b", delimiter=",", normalize_columns=3, raise_on_missing_columns=True)
+
+        with pytest.raises(SplurgeDsvColumnMismatchError):
+            DsvHelper.parse("a,b,c,d", delimiter=",", normalize_columns=3, raise_on_extra_columns=True)
+
+    def test_parses_detect_normalize_in_memory(self) -> None:
+        """Test detects expected columns from first non-blank line in memory."""
+
+    content = ["", "a,b,c", "d,e"]
+    result = DsvHelper.parses(content, delimiter=",", detect_columns=True)
+    # Leading blank line is preserved as [''] then subsequent rows are normalized
+    assert result == [["", "", ""], ["a", "b", "c"], ["d", "e", ""]]
 
     # File system tests moved to integration tests

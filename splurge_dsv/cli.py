@@ -23,6 +23,7 @@ from pathlib import Path
 # Local imports
 from splurge_dsv import __version__
 from splurge_dsv.dsv import Dsv, DsvConfig
+from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeDsvError
 
 
@@ -39,9 +40,13 @@ def parse_arguments() -> argparse.Namespace:
         epilog="""
 Examples:
   python -m splurge_dsv data.csv --delimiter ,
-  python -m splurge_dsv data.tsv --delimiter "\\t"
+  python -m splurge_dsv data.tsv --delimiter "\t"
   python -m splurge_dsv data.txt --delimiter "|" --bookend '"'
-        """,
+  # Auto-detect the expected column count and normalize rows; scan up to 5 chunks
+  python -m splurge_dsv data.csv --delimiter , --detect-normalize-columns --max-detect-chunks 5
+  # Stream a large file while attempting to detect the column count from the start
+  python -m splurge_dsv large.csv --delimiter , --stream --detect-normalize-columns --max-detect-chunks 10
+    """,
     )
 
     parser.add_argument("file_path", type=str, help="Path to the DSV file to parse")
@@ -64,7 +69,47 @@ Examples:
         "--stream", "-s", action="store_true", help="Stream the file in chunks instead of loading entirely into memory"
     )
 
-    parser.add_argument("--chunk-size", type=int, default=500, help="Chunk size for streaming (default: 500)")
+    parser.add_argument(
+        "--detect-normalize-columns",
+        action="store_true",
+        help=(
+            "Auto-detect the expected column count from the first non-blank logical row "
+            "and normalize subsequent rows to that count. For streamed parsing, the "
+            "detector may scan up to --max-detect-chunks chunks from the start of the file."
+        ),
+    )
+
+    parser.add_argument(
+        "--raise-on-missing-columns",
+        action="store_true",
+        help="Raise an error if a row has fewer columns than the detected/expected count",
+    )
+
+    parser.add_argument(
+        "--raise-on-extra-columns",
+        action="store_true",
+        help="Raise an error if a row has more columns than the detected/expected count",
+    )
+
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=DsvHelper.DEFAULT_CHUNK_SIZE,
+        help=(
+            f"Chunk size for streaming (minimum: {DsvHelper.DEFAULT_MIN_CHUNK_SIZE}, "
+            f"default: {DsvHelper.DEFAULT_CHUNK_SIZE})"
+        ),
+    )
+
+    parser.add_argument(
+        "--max-detect-chunks",
+        type=int,
+        default=DsvHelper.MAX_DETECT_CHUNKS,
+        help=(
+            "When detecting columns while streaming (use --detect-normalize-columns), "
+            f"scan up to N chunks from the start of the stream before giving up (default: {DsvHelper.MAX_DETECT_CHUNKS})."
+        ),
+    )
 
     parser.add_argument(
         "--output-format",
@@ -151,6 +196,10 @@ def run_cli() -> int:
             skip_header_rows=args.skip_header,
             skip_footer_rows=args.skip_footer,
             chunk_size=args.chunk_size,
+            detect_columns=args.detect_normalize_columns,
+            raise_on_missing_columns=args.raise_on_missing_columns,
+            raise_on_extra_columns=args.raise_on_extra_columns,
+            max_detect_chunks=args.max_detect_chunks,
         )
         dsv = Dsv(config)
 
@@ -163,52 +212,12 @@ def run_cli() -> int:
 
             try:
                 for chunk in dsv.parse_file_stream(file_path):
-                    # Diagnostic: log chunk type and properties to stderr to help
-                    # triage inconsistent behavior when printing table output.
-                    try:
-                        has_len = hasattr(chunk, "__len__")
-                        is_iter = hasattr(chunk, "__iter__")
-
-                        # Diagnostic logging removed for production; keep inspection logic.
-
-                        # If chunk is an iterator/generator (no __len__), materialize it
-                        # for inspection so we can log shapes of the contained rows.
-                        if not has_len and is_iter:
-                            materialized = list(chunk)
-                            # materialized length was logged previously; no-op now
-                            chunk = materialized
-                        else:
-                            # If it's a sequence, make sure we have a concrete list for inspection
-                            if isinstance(chunk, list | tuple):
-                                chunk = list(chunk)
-
-                        # At this point `chunk` should be a list of rows; log a small sample
-                        # sample row inspection removed
-
-                        # Detect any rows that don't match the first row's column count
-                        try:
-                            expected_cols = len(chunk[0]) if chunk else 0
-                            mismatches = [
-                                (idx, len(r))
-                                for idx, r in enumerate(chunk)
-                                if hasattr(r, "__len__") and len(r) != expected_cols
-                            ]
-                            if mismatches:
-                                # mismatch details previously logged; defer to caller tools
-                                pass
-                        except Exception:
-                            # ignore mismatch inspection errors
-                            pass
-
-                    except Exception:
-                        # ignore diagnostic inspection errors
-                        pass
-
+                    # Streaming loop: each `chunk` is a list of parsed rows.
                     chunk_count += 1
                     try:
                         total_rows += len(chunk)
                     except TypeError:
-                        # Shouldn't happen after materialization, but guard anyway
+                        # Defensive: if chunk is an iterator, count manually
                         total_rows += sum(1 for _ in chunk)
 
                     if args.output_format == "json":
