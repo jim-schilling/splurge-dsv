@@ -34,7 +34,7 @@ splurge_dsv/
 
 ### Dependencies and External Interfaces
 
-- **Minimal Dependencies:** No runtime dependencies, only dev dependencies for testing (pytest, pytest-cov, pytest-xdist).
+- **Minimal Dependencies:** No runtime dependencies, only dev dependencies for testing (pytest, pytest-cov).
 - **Python Version:** Supports Python 3.10+.
 - **External Interfaces:** File system operations, command-line interface, and in-memory text processing.
 

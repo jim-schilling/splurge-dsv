@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.2.2] - 2025-10-11
+### Deprecated
+- **Deprecated `SafeTextFileReader`**: The `SafeTextFileReader` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for file reading operations.
+- **Deprecated `SafeTextFileWriter`**: The `SafeTextFileWriter` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for file writing operations.
+- **Deprecated `PathValidator`**: The `PathValidator` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for path validation functionalities.
+- **Deprecated `TextFileHelper`**: The `TextFileHelper` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for text file handling functionalities.
+### Added
+- **New Exception**: Added `SplurgeDsvFileExistsError` to handle file existence errors.
+### Fixed
+- **Fixed Exception Mapping**: Many errors were incorrectly mapped to `SplurgeDsvEncodingError`; this has been corrected to use appropriate exception types. Some exceptions were not mapped to any `SplurgeDsv*` exception; these have also been corrected.
+### Changed
+- **3rd-Party Dependency Additions**: Added `splurge-safe-io (v2025.0.4)`.
+  - `splurge-safe-io` is a new dependency that provides robust and secure file I/O operations, including safe text file reading and writing with deterministic newline handling and path validation.
+  - This change reduces code duplication and improves maintainability by leveraging the functionality of `splurge-safe-io`.
+  - Users should refer to the `splurge-safe-io` documentation for details on its usage and features.
+- **Code Refactoring**: Refactored `SafeTextFileReader`, `SafeTextFileWriter`, and `PathValidator` to utilize `splurge-safe-io` implementations internally, ensuring consistent behavior and reducing maintenance overhead.
+- **Backward Compatibility**: This release maintains backward compatibility for existing users, but users are encouraged to transition to `splurge-safe-io` for future-proofing their codebases.
+  - **_This release is a commit-only release and will not be published to PyPI._**
+
 ## 2025.2.1 - 2025-10-07
 ### Deprecated
 - **Deprecated `parse_stream` API**: `Dsv.parse_stream()` and `DsvHelper.parse_stream()` now emit a deprecation warning and will be removed in a future release. Use the new `parse_file_stream()` method on `Dsv`/`DsvHelper` instead for stream-based parsing of files (preserves chunked/streaming behavior). This change was made to standardize the naming and make the streaming API surface consistent across helpers and the `Dsv` class.

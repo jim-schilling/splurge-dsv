@@ -204,6 +204,7 @@ Jane Smith|25|Los Angeles|Designer"""
 
     def test_streaming_workflow(self, cli_command: str, large_csv_file: Path) -> None:
         """Test streaming workflow with large file."""
+
         returncode, stdout, stderr = self.run_cli_command(
             cli_command, [str(large_csv_file), "--delimiter", ",", "--stream"]
         )

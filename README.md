@@ -20,6 +20,23 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Type Safety**: Full type annotations with mypy validation
 - **Comprehensive Testing**: 420 tests (409 passed, 11 skipped) with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility
 
+**⚠️ CHANGES in v2025.2.2**
+> - **Deprecated Warning**: The following modules and their associated classes and functions are deprecated and will be removed in a future release (2025.3.0). Users are encouraged to transition to the `splurge-safe-io` package for these functionalities:
+>   - `splurge_dsv.safe_text_file_reader`
+>   - `splurge_dsv.safe_text_file_writer`
+>   - `splurge_dsv.path_validator`
+>   - `splurge_dsv.text_file_helper`
+> - **New Exception**: Added `SplurgeDsvFileExistsError` to handle file existence errors.
+> - **Fixed Exception Mapping**: Many errors were incorrectly mapped to SplurgeDsvEncodingError; this has been corrected to use appropriate exception types. 
+>   - Some exceptions were not mapped to any SplurgeDsv* exception; these have also been corrected.
+> - **3rd-Party Dependency Additions**: Added `splurge-safe-io (v2025.0.4)`.
+>   - `splurge-safe-io` is a new dependency that provides robust and secure file I/O operations, including safe text file reading and writing with deterministic newline handling and path validation.
+>   - This change reduces code duplication and improves maintainability by leveraging the functionality of `splurge-safe-io`.
+>   - Users should refer to the `splurge-safe-io` documentation for details on its usage and features.
+> - **Code Refactoring**: Refactored `SafeTextFileReader`, `SafeTextFileWriter`, and `PathValidator` to utilize `splurge-safe-io` implementations internally, ensuring consistent behavior and reducing maintenance overhead.
+> - **This release maintains backward compatibility** for existing users, but users are encouraged to transition to `splurge-safe-io` for future-proofing their codebases.
+>   - **_This release is a commit-only release and will not be published to PyPI._**
+
 **⚠️ BREAKING CHANGES in v2025.2.0**
 >
 > - **Exception Names Changed**: All exceptions now use `SplurgeDsv*` prefix (e.g., `SplurgeParameterError` → `SplurgeDsvParameterError`)

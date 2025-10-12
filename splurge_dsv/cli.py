@@ -161,18 +161,71 @@ def run_cli() -> int:
             chunk_count = 0
             total_rows = 0
 
-            for chunk in dsv.parse_file_stream(file_path):
-                chunk_count += 1
-                total_rows += len(chunk)
-                if args.output_format == "json":
-                    print(json.dumps(chunk, ensure_ascii=False))
-                elif args.output_format == "ndjson":
-                    for row in chunk:
-                        print(json.dumps(row, ensure_ascii=False))
-                else:
-                    print(f"Chunk {chunk_count}: {len(chunk)} rows")
-                    print_results(chunk, args.delimiter)
-                    print()
+            try:
+                for chunk in dsv.parse_file_stream(file_path):
+                    # Diagnostic: log chunk type and properties to stderr to help
+                    # triage inconsistent behavior when printing table output.
+                    try:
+                        has_len = hasattr(chunk, "__len__")
+                        is_iter = hasattr(chunk, "__iter__")
+
+                        # Diagnostic logging removed for production; keep inspection logic.
+
+                        # If chunk is an iterator/generator (no __len__), materialize it
+                        # for inspection so we can log shapes of the contained rows.
+                        if not has_len and is_iter:
+                            materialized = list(chunk)
+                            # materialized length was logged previously; no-op now
+                            chunk = materialized
+                        else:
+                            # If it's a sequence, make sure we have a concrete list for inspection
+                            if isinstance(chunk, list | tuple):
+                                chunk = list(chunk)
+
+                        # At this point `chunk` should be a list of rows; log a small sample
+                        # sample row inspection removed
+
+                        # Detect any rows that don't match the first row's column count
+                        try:
+                            expected_cols = len(chunk[0]) if chunk else 0
+                            mismatches = [
+                                (idx, len(r))
+                                for idx, r in enumerate(chunk)
+                                if hasattr(r, "__len__") and len(r) != expected_cols
+                            ]
+                            if mismatches:
+                                # mismatch details previously logged; defer to caller tools
+                                pass
+                        except Exception:
+                            # ignore mismatch inspection errors
+                            pass
+
+                    except Exception:
+                        # ignore diagnostic inspection errors
+                        pass
+
+                    chunk_count += 1
+                    try:
+                        total_rows += len(chunk)
+                    except TypeError:
+                        # Shouldn't happen after materialization, but guard anyway
+                        total_rows += sum(1 for _ in chunk)
+
+                    if args.output_format == "json":
+                        print(json.dumps(chunk, ensure_ascii=False))
+                    elif args.output_format == "ndjson":
+                        for row in chunk:
+                            print(json.dumps(row, ensure_ascii=False))
+                    else:
+                        print(f"Chunk {chunk_count}: {len(chunk)} rows")
+                        print_results(chunk, args.delimiter)
+                        print()
+            except Exception as e:
+                print(f"Error during streaming: {e}", file=sys.stderr)
+                import traceback
+
+                traceback.print_exc(file=sys.stderr)
+                return 1
 
             if args.output_format not in ["json", "ndjson"]:
                 print(f"Total: {total_rows} rows in {chunk_count} chunks")

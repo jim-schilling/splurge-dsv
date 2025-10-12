@@ -14,7 +14,7 @@ import tempfile
 import pytest
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvFileEncodingError
+from splurge_dsv.exceptions import SplurgeDsvFileDecodingError
 from splurge_dsv.text_file_helper import TextFileHelper
 
 
@@ -31,8 +31,8 @@ class TestEncodingEdgeCases:
             temp_path = f.name
 
         try:
-            # Should raise encoding error when trying to read as UTF-8
-            with pytest.raises(SplurgeDsvFileEncodingError):
+            # Should raise decoding error when trying to read as UTF-8
+            with pytest.raises(SplurgeDsvFileDecodingError):
                 TextFileHelper.read(temp_path, encoding="utf-8")
         finally:
             os.unlink(temp_path)
@@ -57,7 +57,7 @@ class TestEncodingEdgeCases:
                 result_utf8 = TextFileHelper.read(temp_path, encoding="utf-8")
                 # If it succeeds, the content might be different
                 assert isinstance(result_utf8, list)
-            except SplurgeDsvFileEncodingError:
+            except SplurgeDsvFileDecodingError:
                 # Expected if the bytes are invalid UTF-8
                 pass
 
@@ -138,7 +138,7 @@ class TestEncodingEdgeCases:
                 result_latin1 = TextFileHelper.read(temp_path, encoding="latin-1")
                 # If it succeeds, the content might be mangled
                 assert isinstance(result_latin1, list)
-            except SplurgeDsvFileEncodingError:
+            except SplurgeDsvFileDecodingError:
                 # Expected for some content
                 pass
 

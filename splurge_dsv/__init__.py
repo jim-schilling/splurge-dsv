@@ -13,8 +13,19 @@ Copyright (c) 2025 Jim Schilling
 # test cases may remove the process working directory which causes calls to
 # os.getcwd() to raise FileNotFoundError later during test execution. Guard
 # against that here by switching to this package directory when cwd is missing.
+# Ensure the required external implementation is available on import so the
+# rest of the package can rely on its APIs. Fail fast with a helpful message
+# instructing the user to install the package if it's missing.
+import importlib as _importlib
 import os
 from pathlib import Path as _Path
+
+try:  # pragma: no cover - import-time guard
+    _importlib.import_module("splurge_safe_io")
+except Exception as e:
+    raise ImportError(
+        "Missing required dependency 'splurge-safe-io'. Please install it: `pip install splurge-safe-io`"
+    ) from e
 
 try:
     try:
@@ -60,7 +71,7 @@ from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.string_tokenizer import StringTokenizer
 from splurge_dsv.text_file_helper import TextFileHelper
 
-__version__ = "2025.2.1"
+__version__ = "2025.2.2"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 

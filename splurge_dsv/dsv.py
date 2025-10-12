@@ -21,6 +21,7 @@ import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
 from os import PathLike
+from pathlib import Path
 
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
@@ -56,7 +57,7 @@ class DsvConfig:
     encoding: str = "utf-8"
     skip_header_rows: int = 0
     skip_footer_rows: int = 0
-    chunk_size: int = 500
+    chunk_size: int = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -205,7 +206,7 @@ class Dsv:
             bookend_strip=self.config.bookend_strip,
         )
 
-    def parse_file(self, file_path: PathLike[str] | str) -> list[list[str]]:
+    def parse_file(self, file_path: PathLike[str] | Path | str) -> list[list[str]]:
         """Parse a DSV file and return all rows as lists of strings.
 
         Args:
@@ -215,10 +216,11 @@ class Dsv:
             A list of rows, where each row is a list of string tokens.
 
         Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvFileNotFoundError: If the file cannot be found.
             SplurgeDsvFilePermissionError: If the file cannot be read.
-            SplurgeDsvFileEncodingError: If the file cannot be decoded with
-                the configured encoding.
+            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file(
             file_path,
@@ -231,7 +233,7 @@ class Dsv:
             skip_footer_rows=self.config.skip_footer_rows,
         )
 
-    def parse_file_stream(self, file_path: PathLike[str] | str) -> Iterator[list[list[str]]]:
+    def parse_file_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
         """Stream-parse a DSV file, yielding chunks of parsed rows.
 
         The method yields lists of parsed rows (each row itself is a list of
@@ -243,6 +245,13 @@ class Dsv:
 
         Yields:
             Lists of parsed rows, each list containing up to ``chunk_size`` rows.
+
+        Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileNotFoundError: If the file cannot be found.
+            SplurgeDsvFilePermissionError: If the file cannot be read.
+            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file_stream(
             file_path,
@@ -256,7 +265,7 @@ class Dsv:
             chunk_size=self.config.chunk_size,
         )
 
-    def parse_stream(self, file_path: PathLike[str] | str) -> Iterator[list[list[str]]]:
+    def parse_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
         """Stream-parse a DSV file, yielding chunks of parsed rows.
 
         The method yields lists of parsed rows (each row itself is a list of
@@ -268,6 +277,13 @@ class Dsv:
 
         Yields:
             Lists of parsed rows, each list containing up to ``chunk_size`` rows.
+
+        Raises:
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileNotFoundError: If the file cannot be found.
+            SplurgeDsvFilePermissionError: If the file cannot be read.
+            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvError: For other unexpected errors.
 
         Deprecated: Use `parse_file_stream` instead. This method will be removed in a future release.
         """

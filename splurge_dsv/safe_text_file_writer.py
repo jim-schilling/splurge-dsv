@@ -1,104 +1,246 @@
-"""Deterministic text-only writer utilities.
+"""Compatibility shim for safe text file writer using splurge_safe_io.
 
-This module implements :class:`SafeTextFileWriter` and a convenience
-``open_text_writer`` context manager. Writes always use the configured
-encoding and normalize newline characters to a canonical form (LF) to
-ensure consistent files across platforms.
-
-Example:
-    with open_text_writer("out.txt") as buf:
-        buf.write("line1\nline2\n")
-
-Copyright (c) 2025 Jim Schilling
-Please preserve this header and all related material when sharing!
-
-License: MIT
+Delegates to ``splurge_safe_io.safe_text_file_writer`` and maps
+exception classes to `splurge_dsv.exceptions` equivalents.
 """
 
 from __future__ import annotations
 
 import io
+import warnings
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import cast
 
-from .exceptions import SplurgeDsvFileEncodingError
+import splurge_safe_io.safe_text_file_writer as safe_io_text_file_writer
+from splurge_safe_io import exceptions as safe_io_exceptions
+
+from splurge_dsv.exceptions import (
+    SplurgeDsvError,
+    SplurgeDsvFileEncodingError,
+    SplurgeDsvFileExistsError,
+    SplurgeDsvFileOperationError,
+    SplurgeDsvFilePermissionError,
+    SplurgeDsvPathValidationError,
+)
 
 
 class SafeTextFileWriter:
-    """Helper for deterministic text writes with newline normalization.
+    """Compatibility wrapper around splurge_safe_io.SafeTextFileWriter.
 
     Args:
-        file_path: Destination file path.
-        encoding: Text encoding to use (default: 'utf-8').
-        newline: Canonical newline sequence to write (default: '\n').
+        file_path: Path or str to the target file.
+        encoding: Text encoding to use (default 'utf-8').
+        newline: Newline handling mode (default None).
+        mode: File open mode, one of 'w', 'a', or 'x' (default 'w').
 
-    The class exposes a minimal file-like API and will raise
-    :class:`SplurgeDsvFileEncodingError` when the underlying file cannot be
-    opened with the requested encoding.
+    Raises:
+        SplurgeDsvPathValidationError: If the file path is invalid.
+        SplurgeDsvFileEncodingError: If the encoding is unsupported.
+        SplurgeDsvFileNotFoundError: If the file does not exist (for '
     """
 
-    def __init__(self, file_path: Path, *, encoding: str = "utf-8", newline: str | None = "\n") -> None:
-        self._path = Path(file_path)
+    def __init__(
+        self,
+        file_path: Path | str,
+        *,
+        encoding: str = safe_io_text_file_writer.DEFAULT_ENCODING,
+        newline: str | None = safe_io_text_file_writer.CANONICAL_NEWLINE,
+    ) -> None:
+        self._file_path = Path(file_path)
         self._encoding = encoding
-        # newline is the canonical newline we will write; default to LF
-        self._newline = "\n" if newline is None else newline
+        self._newline = newline
         self._file: io.TextIOBase | None = None
+        self._mode = "w"
+        self._impl: safe_io_text_file_writer.SafeTextFileWriter | None = None
 
     def open(self, mode: str = "w") -> io.TextIOBase:
-        """Open the underlying file for text writing.
-
-        Args:
-            mode: File open mode (default: 'w').
+        """Initializes and opens the file for writing.
 
         Returns:
-            The opened text file object.
+            The underlying text IO object for writing.
+
+        Args:
+            mode: File open mode, one of 'w', 'a', or 'x' (default 'w').
 
         Raises:
-            SplurgeDsvFileEncodingError: If the file cannot be opened with the
-                requested encoding or underlying OS error occurs.
+            SplurgeDsvPathValidationError: If the file path is invalid.
+            SplurgeDsvFileEncodingError: If the encoding is unsupported.
+            SplurgeDsvFileExistsError: If the file already exists (for 'x' mode).
+            SplurgeDsvFilePermissionError: If there are permission issues.
+            SplurgeDsvFileOperationError: For other file operation errors.
+            SplurgeDsvError: For unexpected errors.
+
+        Note: The external SafeTextFileWriter does not expose an open()
+        method, so this simply returns the internal implementation which
+        provides the necessary methods for writing.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release.
         """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileWriter.open is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from splurge_safe_io.safe_text_file_writer import TextFileWriteMode
+
+        if mode in ["w", "wt"]:
+            file_write_mode = TextFileWriteMode.CREATE_OR_TRUNCATE
+        elif mode in ["a", "at"]:
+            file_write_mode = TextFileWriteMode.CREATE_OR_APPEND
+        elif mode in ["x", "xt"]:
+            file_write_mode = TextFileWriteMode.CREATE_NEW
+        else:
+            # Default behavior
+            file_write_mode = TextFileWriteMode.CREATE_OR_TRUNCATE
+
         try:
-            # open with newline="" to allow us to manage newline normalization
-            fp = open(self._path, mode, encoding=self._encoding, newline="")
-            # cast to TextIOBase for precise typing
-            self._file = cast(io.TextIOBase, fp)
+            # Construct the external implementation and rely on it.
+            self._impl = safe_io_text_file_writer.SafeTextFileWriter(
+                self._file_path,
+                encoding=self._encoding,
+                canonical_newline=self._newline,
+                file_write_mode=file_write_mode,
+            )
+            self._file = self._impl._file_obj  # type: ignore[attr-defined]
+            # mypy: ensure we don't return Optional
+            assert self._file is not None
             return self._file
-        except (LookupError, OSError) as exc:
-            raise SplurgeDsvFileEncodingError(str(exc)) from exc
+
+        except safe_io_exceptions.SplurgeSafeIoPathValidationError as e:
+            raise SplurgeDsvPathValidationError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileEncodingError as e:
+            raise SplurgeDsvFileEncodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFileAlreadyExistsError as e:
+            raise SplurgeDsvFileExistsError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoFilePermissionError as e:
+            raise SplurgeDsvFilePermissionError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
     def write(self, text: str) -> int:
-        """Normalize newlines and write ``text`` to the opened file.
+        """Writes a string to the file.
 
         Args:
-            text: Text to write (newlines will be normalized).
+            text: The string to write.
 
         Returns:
-            Number of characters written.
+            The number of characters written.
+
+        Raises:
+            SplurgeDsvError: If file is not opened and for unexpected errors.
+            SplurgeDsvFileEncodingError: For encoding-related errors.
+            SplurgeDsvFileOperationError: For file operation errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
         """
-        if self._file is None:
-            raise ValueError("file not opened")
-        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-        return self._file.write(normalized)
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileWriter.write is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        if not self._impl:
+            raise SplurgeDsvError("SafeTextFileWriter is not open. Call open() before writing.")
+
+        try:
+            return self._impl.write(text)
+
+        except safe_io_exceptions.SplurgeSafeIoFileEncodingError as e:
+            raise SplurgeDsvFileEncodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
     def writelines(self, lines: Iterable[str]) -> None:
-        if self._file is None:
-            raise ValueError("file not opened")
-        for line in lines:
-            self.write(line)
+        """Writes an iterable of strings to the file.
+
+        Args:
+            lines: An iterable of strings to write.
+
+        Raises:
+            SplurgeDsvError: If file is not opened and for unexpected errors.
+            SplurgeDsvFileEncodingError: For encoding-related errors.
+            SplurgeDsvFileOperationError: For file operation errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
+        """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileWriter.writelines is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        if not self._impl:
+            raise SplurgeDsvError("SafeTextFileWriter is not open. Call open() before writing.")
+
+        try:
+            return self._impl.writelines(lines)
+
+        except safe_io_exceptions.SplurgeSafeIoFileEncodingError as e:
+            raise SplurgeDsvFileEncodingError(str(e)) from e
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
     def flush(self) -> None:
-        if self._file is None:
-            return
-        self._file.flush()
+        """Flushes any buffered content to disk.
+
+        Raises:
+            SplurgeDsvError: If file is not opened and for unexpected errors.
+            SplurgeDsvFileOperationError: For file operation errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
+        """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileWriter.flush is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        if not self._impl:
+            raise SplurgeDsvError("SafeTextFileWriter is not open. Call open() before writing.")
+
+        try:
+            self._impl.flush()
+
+        except safe_io_exceptions.SplurgeSafeIoOsError as e:
+            raise SplurgeDsvFileOperationError(str(e)) from e
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
 
     def close(self) -> None:
-        if self._file is None:
-            return
+        """Closes the writer, flushing any buffered content to disk.
+
+        Raises:
+            SplurgeDsvError: For unexpected errors.
+
+        **Deprecated:** This method is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
+        """
+        # Emit a DeprecationWarning to signal removal in a future release
+        warnings.warn(
+            "SafeTextFileWriter.close is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         try:
-            self._file.close()
+            if self._impl:
+                self._impl.close()
+
+        except Exception as e:
+            raise SplurgeDsvError(str(e)) from e
+
         finally:
+            self._impl = None
             self._file = None
 
 
@@ -117,7 +259,15 @@ def open_text_writer(file_path: Path | str, *, encoding: str = "utf-8", mode: st
 
     Yields:
         io.StringIO: Buffer to write textual content into.
+
+    **Deprecated:** This function is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.
     """
+    # Emit a DeprecationWarning to signal removal in a future release
+    warnings.warn(
+        "open_text_writer is deprecated and will be removed in a future release. Consider using splurge-safe-io directly.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     path = Path(file_path)
     buffer = io.StringIO()
     try:

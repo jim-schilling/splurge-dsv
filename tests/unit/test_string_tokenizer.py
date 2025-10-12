@@ -64,7 +64,7 @@ class TestStringTokenizerParse:
     def test_parsing_empty_string_stripped(self) -> None:
         """Test parsing an empty string with strip=True."""
         result = StringTokenizer.parse("   ", delimiter=",", strip=True)
-        assert result == []
+        assert result == [""]
 
     def test_parsing_none_content(self) -> None:
         """Test parsing None content."""
@@ -137,7 +137,7 @@ class TestStringTokenizerParses:
         """Test parsing a list with empty strings, stripped."""
         content = ["   ", "a,b", "   "]
         result = StringTokenizer.parses(content, delimiter=",", strip=True)
-        expected = [[], ["a", "b"], []]
+        expected = [[""], ["a", "b"], [""]]
         assert result == expected
 
     def test_parsing_with_different_delimiters(self) -> None:
@@ -357,5 +357,5 @@ class TestStringTokenizerEdgeCases:
         """Test parsing multiple strings with mixed content, stripped."""
         content = ["a,b,c", "", "d,e,f", "   ", "g,h,i"]
         result = StringTokenizer.parses(content, delimiter=",", strip=True)
-        expected = [["a", "b", "c"], [], ["d", "e", "f"], [], ["g", "h", "i"]]
+        expected = [["a", "b", "c"], [""], ["d", "e", "f"], [""], ["g", "h", "i"]]
         assert result == expected

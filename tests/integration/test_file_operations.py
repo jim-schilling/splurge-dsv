@@ -16,7 +16,7 @@ import pytest
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
-    SplurgeDsvFileEncodingError,
+    SplurgeDsvFileDecodingError,
     SplurgeDsvFileNotFoundError,
     SplurgeDsvFilePermissionError,
     SplurgeDsvParameterError,
@@ -208,7 +208,7 @@ class TestFileEncodingIntegration:
         test_file.write_text(content)
 
         result = DsvHelper.parse_file(test_file, delimiter=",")
-        expected = [["a", "b", "c"], ["d", "e", "f"], []]
+        expected = [["a", "b", "c"], ["d", "e", "f"], [""]]
         assert result == expected
 
     def test_parse_file_with_only_newlines(self, tmp_path: Path) -> None:
@@ -218,7 +218,7 @@ class TestFileEncodingIntegration:
         test_file.write_text(content)
 
         result = DsvHelper.parse_file(test_file, delimiter=",")
-        expected = [[], [], []]
+        expected = [[""], [""], [""]]
         assert result == expected
 
     def test_parse_file_with_encoding_error(self, tmp_path: Path) -> None:
@@ -227,7 +227,7 @@ class TestFileEncodingIntegration:
         # Write binary data that's not valid UTF-8
         test_file.write_bytes(b"a,b,c\nd,e,\xff\nf,g,h")
 
-        with pytest.raises(SplurgeDsvFileEncodingError):
+        with pytest.raises(SplurgeDsvFileDecodingError):
             DsvHelper.parse_file(test_file, delimiter=",")
 
     def test_parse_file_with_permission_error(self, tmp_path: Path) -> None:
