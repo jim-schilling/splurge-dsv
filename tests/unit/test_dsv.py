@@ -274,8 +274,8 @@ class TestDsv:
         finally:
             Path(temp_path).unlink()
 
-    def test_dsv_parse_stream_basic(self):
-        """Test Dsv.parse_stream() method."""
+    def test_dsv_parse_file_stream_basic(self):
+        """Test Dsv.parse_file_stream() method."""
         config = DsvConfig(delimiter=",", chunk_size=200)
         parser = Dsv(config)
 
@@ -296,8 +296,45 @@ class TestDsv:
         finally:
             Path(temp_path).unlink()
 
-    def test_dsv_parse_stream_matches_dsv_helper(self):
-        """Test that Dsv.parse_stream() produces same results as DsvHelper.parse_stream()."""
+    def test_detect_columns_in_parse_file(self):
+        """Test parse_file detects columns and normalizes when configured."""
+        config = DsvConfig(delimiter=",", detect_columns=True, skip_header_rows=1)
+        parser = Dsv(config)
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("header1,header2,header3\n")
+            f.write("a,b,c\n")
+            f.write("d,e\n")
+            temp_path = f.name
+
+        try:
+            rows = parser.parse_file(temp_path)
+            assert rows == [["a", "b", "c"], ["d", "e", ""]]
+        finally:
+            Path(temp_path).unlink()
+
+    def test_detect_columns_in_stream(self):
+        """Test parse_file_stream detects columns using first chunk and normalizes."""
+        config = DsvConfig(delimiter=",", detect_columns=True, chunk_size=10, skip_header_rows=1)
+        parser = Dsv(config)
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("header1,header2\n")
+            f.write("a,b,c\n")
+            f.write("d,e\n")
+            f.write("f,g,h\n")
+            temp_path = f.name
+
+        try:
+            chunks = list(parser.parse_file_stream(temp_path))
+            # Flatten rows
+            rows = [r for chunk in chunks for r in chunk]
+            assert rows == [["a", "b", "c"], ["d", "e", ""], ["f", "g", "h"]]
+        finally:
+            Path(temp_path).unlink()
+
+    def test_dsv_parse_file_stream_matches_dsv_helper(self):
+        """Test that Dsv.parse_file_stream() produces same results as DsvHelper.parse_file_stream()."""
         config = DsvConfig(delimiter="\t", chunk_size=150, skip_header_rows=1)
         parser = Dsv(config)
 

@@ -6,6 +6,7 @@ Tests all custom exception classes and their functionality.
 
 # Local imports
 from splurge_dsv.exceptions import (
+    SplurgeDsvColumnMismatchError,
     SplurgeDsvConfigurationError,
     SplurgeDsvDataProcessingError,
     SplurgeDsvError,
@@ -118,13 +119,13 @@ class TestSplurgeFileOperationError:
 class TestSplurgeDataProcessingError:
     """Test data processing error exceptions."""
 
-    def test_parsing_error(self) -> None:
-        """Test SplurgeDsvParsingError."""
-        error = SplurgeDsvParsingError("Parse failed", details="Invalid delimiter in line 5")
+    def test_column_mismatch_error(self) -> None:
+        """Test SplurgeDsvColumnMismatchError."""
+        error = SplurgeDsvColumnMismatchError("Column mismatch", details="Expected 3 columns, got 2")
         assert isinstance(error, SplurgeDsvDataProcessingError)
         assert isinstance(error, SplurgeDsvError)
-        assert error.message == "Parse failed"
-        assert error.details == "Invalid delimiter in line 5"
+        assert error.message == "Column mismatch"
+        assert error.details == "Expected 3 columns, got 2"
 
     def test_type_conversion_error(self) -> None:
         """Test SplurgeDsvTypeConversionError."""
@@ -205,6 +206,7 @@ class TestExceptionHierarchy:
             SplurgeDsvFileEncodingError("test"),
             SplurgeDsvPathValidationError("test"),
             SplurgeDsvParsingError("test"),
+            SplurgeDsvColumnMismatchError("test"),
             SplurgeDsvTypeConversionError("test"),
             SplurgeDsvStreamingError("test"),
             SplurgeDsvResourceAcquisitionError("test"),
@@ -239,10 +241,12 @@ class TestExceptionHierarchy:
 
         # Test data processing errors
         parsing_error = SplurgeDsvParsingError("test")
+        column_mismatch_error = SplurgeDsvColumnMismatchError("test")
         type_error = SplurgeDsvTypeConversionError("test")
         streaming_error = SplurgeDsvStreamingError("test")
 
         assert isinstance(parsing_error, SplurgeDsvDataProcessingError)
+        assert isinstance(column_mismatch_error, SplurgeDsvDataProcessingError)
         assert isinstance(type_error, SplurgeDsvDataProcessingError)
         assert isinstance(streaming_error, SplurgeDsvDataProcessingError)
 

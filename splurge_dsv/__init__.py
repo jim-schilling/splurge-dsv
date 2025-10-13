@@ -46,11 +46,13 @@ except Exception:
 from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
+    SplurgeDsvColumnMismatchError,
     SplurgeDsvConfigurationError,
     SplurgeDsvDataProcessingError,
     # canonical SplurgeDsv* exception names
     SplurgeDsvError,
     SplurgeDsvFileEncodingError,
+    SplurgeDsvFileExistsError,
     SplurgeDsvFileNotFoundError,
     SplurgeDsvFileOperationError,
     SplurgeDsvFilePermissionError,
@@ -67,11 +69,9 @@ from splurge_dsv.exceptions import (
     SplurgeDsvTypeConversionError,
     SplurgeDsvValidationError,
 )
-from splurge_dsv.path_validator import PathValidator
 from splurge_dsv.string_tokenizer import StringTokenizer
-from splurge_dsv.text_file_helper import TextFileHelper
 
-__version__ = "2025.2.2"
+__version__ = "2025.3.0"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
@@ -90,6 +90,7 @@ __all__ = [
     "SplurgeDsvPathValidationError",
     "SplurgeDsvDataProcessingError",
     "SplurgeDsvParsingError",
+    "SplurgeDsvColumnMismatchError",
     "SplurgeDsvTypeConversionError",
     "SplurgeDsvStreamingError",
     "SplurgeDsvConfigurationError",
@@ -100,8 +101,7 @@ __all__ = [
     "SplurgeDsvParameterError",
     "SplurgeDsvRangeError",
     "SplurgeDsvFormatError",
+    "SplurgeDsvFileExistsError",
     # Utility classes
     "StringTokenizer",
-    "TextFileHelper",
-    "PathValidator",
 ]

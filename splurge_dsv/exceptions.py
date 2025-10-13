@@ -118,6 +118,10 @@ class SplurgeDsvParsingError(SplurgeDsvDataProcessingError):
     """Raised when parsing fails due to malformed or unexpected content."""
 
 
+class SplurgeDsvColumnMismatchError(SplurgeDsvDataProcessingError):
+    """Raised when a row has a different number of columns than expected."""
+
+
 class SplurgeDsvTypeConversionError(SplurgeDsvDataProcessingError):
     """Raised when a value cannot be converted to the requested type."""
 

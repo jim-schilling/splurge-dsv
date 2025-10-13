@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.3.0] - 2025-10-11
+
+
 ## [2025.2.2] - 2025-10-11
 ### Deprecated
 - **Deprecated `SafeTextFileReader`**: The `SafeTextFileReader` class is deprecated and will be removed in a future release. Users are encouraged to transition to the `splurge-safe-io` package for file reading operations.
@@ -25,7 +28,11 @@ The format is based on Keep a Changelog, and the versioning follows CalVer.
 
 ## 2025.2.1 - 2025-10-07
 ### Deprecated
-- **Deprecated `parse_stream` API**: `Dsv.parse_stream()` and `DsvHelper.parse_stream()` now emit a deprecation warning and will be removed in a future release. Use the new `parse_file_stream()` method on `Dsv`/`DsvHelper` instead for stream-based parsing of files (preserves chunked/streaming behavior). This change was made to standardize the naming and make the streaming API surface consistent across helpers and the `Dsv` class.
+- **Streaming API rename**: The streaming helpers were renamed to `parse_file_stream()` to better communicate the file-based streaming semantics. Callers should migrate code that used `parse_stream()` to `parse_file_stream()`.
+
+## 2025.3.0 - 2025-10-11
+### Removed
+- **Removed `parse_stream`**: The legacy `parse_stream()` helpers were removed in this release. Use `parse_file_stream()` on `Dsv`/`DsvHelper` instead. The removal standardizes streaming APIs and avoids ambiguity about the input types accepted by streaming functions.
 
 
 ## 2025.2.0 - 2025-10-06

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "splurge-dsv"
-version = "2025.2.2"
+version = "2025.3.0"
 description = "A utility library for working with DSV (Delimited String Values) files"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,7 @@ classifiers = [
 
 dependencies = [
     "splurge-safe-io>=2025.0.4",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

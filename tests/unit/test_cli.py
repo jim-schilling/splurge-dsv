@@ -7,13 +7,13 @@ result formatting, and error handling.
 
 # Standard library imports
 import sys
+from pathlib import Path
 
 # Third-party imports
 import pytest
 
 # Local imports
 from splurge_dsv.cli import parse_arguments, print_results, run_cli
-from splurge_dsv.exceptions import SplurgeDsvError
 
 
 class TestCliParseArguments:
@@ -86,6 +86,26 @@ class TestCliParseArguments:
         args = parse_arguments()
         assert args.bookend == '"'
 
+    def test_parse_arguments_with_new_flags(self, mocker) -> None:
+        """Test new CLI flags are parsed correctly."""
+        mocker.patch.object(
+            sys,
+            "argv",
+            [
+                "script",
+                "test.csv",
+                "--delimiter",
+                ",",
+                "--detect-columns",
+                "--raise-on-missing-columns",
+                "--raise-on-extra-columns",
+            ],
+        )
+        args = parse_arguments()
+        assert args.detect_columns
+        assert args.raise_on_missing_columns
+        assert args.raise_on_extra_columns
+
     def test_parse_arguments_with_no_strip_options(self, mocker) -> None:
         """Test argument parsing with no-strip options."""
         mocker.patch.object(sys, "argv", ["script", "test.csv", "--delimiter", ",", "--no-strip", "--no-bookend-strip"])
@@ -131,233 +151,133 @@ class TestCliPrintResults:
 class TestCliMain:
     """Test main CLI functionality."""
 
-    def test_main_success_parse_file(self, mocker) -> None:
-        """Test successful file parsing."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
-        mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
+    def test_main_success_parse_file(self, tmp_path: Path, monkeypatch, capsys) -> None:
+        """Test successful file parsing via end-to-end CLI invocation."""
+        # Create a small CSV for the CLI to parse
+        data_file = tmp_path / "data.csv"
+        data_file.write_text("h1,h2\n1,2\n", encoding="utf-8")
 
-        # Mock file path validation
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
-        mock_path.return_value = mock_path_instance
+        # Use the CLI with real argv (end-to-end)
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(data_file), "--delimiter", ","])
 
-        # Mock Dsv instance and its parse_file method
-        mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_file.return_value = [["header1", "header2"], ["value1", "value2"]]
-        mock_dsv.return_value = mock_dsv_instance
+        # Run CLI and capture output
+        rc = run_cli()
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "Parsed" in captured.out or "Chunk" in captured.out
 
-        # Mock command line arguments
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "test.csv"
-        mock_args.delimiter = ","
-        mock_args.no_strip = False
-        mock_args.bookend = None
-        mock_args.no_bookend_strip = False
-        mock_args.encoding = "utf-8"
-        mock_args.skip_header = 0
-        mock_args.skip_footer = 0
-        mock_args.stream = False
-        mock_args.chunk_size = 500
-        mock_args.output_format = "table"
-        mock_parse.return_value = mock_args
+    def test_main_file_not_found(self, tmp_path: Path, monkeypatch, capsys) -> None:
+        """Test handling of non-existent file using real argv."""
+        missing = tmp_path / "does_not_exist.csv"
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(missing), "--delimiter", ","])
+        rc = run_cli()
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert "not found" in captured.err.lower()
 
-        # Mock print_results to avoid output during testing
-        mocker.patch("splurge_dsv.cli.print_results")
-        result = run_cli()
+    def test_main_not_a_file(self, tmp_path: Path, monkeypatch, capsys) -> None:
+        """Test handling of path that is not a file using end-to-end argv."""
+        p = tmp_path / "somedir"
+        p.mkdir()
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(p), "--delimiter", ","])
+        rc = run_cli()
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert "not a file" in captured.err.lower()
 
-        assert result == 0
-        mock_dsv_instance.parse_file.assert_called_once()
+    def test_main_streaming_mode(self, tmp_path: Path, monkeypatch, capsys) -> None:
+        """Test streaming mode end-to-end using a real file and stream flag."""
+        data_file = tmp_path / "stream.csv"
+        rows = ["h1,h2"] + [f"v{i},w{i}" for i in range(1, 5)]
+        data_file.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-    def test_main_file_not_found(self, mocker) -> None:
-        """Test handling of non-existent file."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = False
-        mock_path.return_value = mock_path_instance
-
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "nonexistent.csv"
-        mock_args.delimiter = ","
-        mock_parse.return_value = mock_args
-
-        mock_print = mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
-
-        assert result == 1
-        mock_print.assert_called()
-
-    def test_main_not_a_file(self, mocker) -> None:
-        """Test handling of path that is not a file."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = False
-        mock_path.return_value = mock_path_instance
-
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "directory/"
-        mock_args.delimiter = ","
-        mock_parse.return_value = mock_args
-
-        mock_print = mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
-
-        assert result == 1
-        mock_print.assert_called()
-
-    def test_main_streaming_mode(self, mocker) -> None:
-        """Test streaming mode functionality."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
-        mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
-
-        # Mock file path validation
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
-        mock_path.return_value = mock_path_instance
-
-        # Mock Dsv instance and its parse_stream method
-        mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_stream.return_value = iter([[["a", "b"], ["c", "d"]]])
-        mock_dsv.return_value = mock_dsv_instance
-
-        # Mock command line arguments
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "test.csv"
-        mock_args.delimiter = ","
-        mock_args.no_strip = False
-        mock_args.bookend = None
-        mock_args.no_bookend_strip = False
-        mock_args.encoding = "utf-8"
-        mock_args.skip_header = 0
-        mock_args.skip_footer = 0
-        mock_args.stream = True
-        mock_args.chunk_size = 500
-        mock_args.output_format = "table"
-        mock_parse.return_value = mock_args
-
-        # Mock print_results to avoid output during testing
-        mocker.patch("splurge_dsv.cli.print_results")
-        mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
-
-        assert result == 0
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(data_file), "--delimiter", ",", "--stream"])
+        rc = run_cli()
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert "Chunk" in captured.out or "Total:" in captured.out
 
     def test_main_splurge_error(self, mocker) -> None:
-        """Test handling of SplurgeDsvError."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
-        mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
+        """Test handling of SplurgeDsvError by provoking a column-mismatch.
 
-        # Mock file path validation
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
-        mock_path.return_value = mock_path_instance
+        Create a real temporary CSV where one row has an extra column. Invoke
+        the CLI end-to-end with --raise-on-extra-columns so the library raises
+        a SplurgeDsvColumnMismatchError (a subclass of SplurgeDsvError) and
+        the CLI should return exit code 1 and print an error to stderr.
+        """
+        # create a temp file with inconsistent columns (second data row has 3 cols)
+        from pathlib import Path
 
-        # Mock Dsv instance and its parse_file method to raise an error
-        mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_file.side_effect = SplurgeDsvError("Test error", details="Test details")
-        mock_dsv.return_value = mock_dsv_instance
+        p = Path.cwd() / "test_cli_extra_cols.csv"
+        try:
+            p.write_text("a,b\n1,2\n1,2,3\n", encoding="utf-8")
 
-        # Mock command line arguments
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "test.csv"
-        mock_args.delimiter = ","
-        mock_args.no_strip = False
-        mock_args.bookend = None
-        mock_args.no_bookend_strip = False
-        mock_args.encoding = "utf-8"
-        mock_args.skip_header = 0
-        mock_args.skip_footer = 0
-        mock_args.stream = False
-        mock_args.chunk_size = 500
-        mock_args.output_format = "table"
-        mock_parse.return_value = mock_args
+            # Use real argv to invoke run_cli end-to-end
+            import sys
 
-        mock_print = mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
+            monkeypatch = __import__("pytest").MonkeyPatch()
+            try:
+                monkeypatch.setattr(
+                    sys, "argv", ["splurge-dsv", str(p), "--delimiter", ",", "--raise-on-extra-columns"]
+                )
+                rc = run_cli()
+            finally:
+                monkeypatch.undo()
 
-        assert result == 1
-        mock_print.assert_called()
+            # CLI should report an error and return non-zero
+            assert rc == 1
+        finally:
+            try:
+                p.unlink()
+            except Exception:
+                pass
 
-    def test_main_keyboard_interrupt(self, mocker) -> None:
-        """Test handling of keyboard interrupt."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
+    def test_main_keyboard_interrupt(self, tmp_path: Path, monkeypatch) -> None:
+        """Test handling of keyboard interrupt by causing the reader to raise KeyboardInterrupt.
 
-        # Mock file path validation
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
-        mock_path.return_value = mock_path_instance
+        We monkeypatch only the SafeTextFileReader to raise KeyboardInterrupt when read() is called.
+        The CLI should catch KeyboardInterrupt and return exit code 130.
+        """
+        p = tmp_path / "kb.csv"
+        p.write_text("a,b\n1,2\n", encoding="utf-8")
 
-        # Mock command line arguments
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "test.csv"
-        mock_args.delimiter = ","
-        mock_args.no_strip = False
-        mock_args.bookend = None
-        mock_args.no_bookend_strip = False
-        mock_args.encoding = "utf-8"
-        mock_args.skip_header = 0
-        mock_args.skip_footer = 0
-        mock_args.stream = False
-        mock_args.chunk_size = 500
-        mock_args.output_format = "table"
-        mock_parse.return_value = mock_args
+        class FakeReader:
+            def __init__(self, *args, **kwargs):
+                pass
 
-        # Mock Dsv instance and its parse_file method to raise KeyboardInterrupt
-        mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
-        mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_file.side_effect = KeyboardInterrupt()
-        mock_dsv.return_value = mock_dsv_instance
+            def read(self):
+                raise KeyboardInterrupt()
 
-        mock_print = mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
+        # Patch the SafeTextFileReader used by DsvHelper
+        import splurge_dsv.dsv_helper as dh
 
-        assert result == 130
-        mock_print.assert_called()
+        monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader)
 
-    def test_main_unexpected_error(self, mocker) -> None:
-        """Test handling of unexpected errors."""
-        mock_path = mocker.patch("splurge_dsv.cli.Path")
+        # Run CLI with real argv
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(p), "--delimiter", ","])
+        rc = run_cli()
+        assert rc == 130
 
-        # Mock file path validation
-        mock_path_instance = mocker.MagicMock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
-        mock_path.return_value = mock_path_instance
+    def test_main_unexpected_error(self, tmp_path: Path, monkeypatch) -> None:
+        """Test handling of unexpected errors by causing the reader to raise a runtime error.
 
-        # Mock command line arguments
-        mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-        mock_args = mocker.MagicMock()
-        mock_args.file_path = "test.csv"
-        mock_args.delimiter = ","
-        mock_args.no_strip = False
-        mock_args.bookend = None
-        mock_args.no_bookend_strip = False
-        mock_args.encoding = "utf-8"
-        mock_args.skip_header = 0
-        mock_args.skip_footer = 0
-        mock_args.stream = False
-        mock_args.chunk_size = 500
-        mock_args.output_format = "table"
-        mock_parse.return_value = mock_args
+        The reader's unexpected exception should be wrapped by DsvHelper into a
+        SplurgeDsvError and the CLI should return exit code 1.
+        """
+        p = tmp_path / "boom.csv"
+        p.write_text("a,b\n1,2\n", encoding="utf-8")
 
-        # Mock Dsv instance and its parse_file method to raise an unexpected error
-        mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
-        mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_file.side_effect = RuntimeError("Unexpected error")
-        mock_dsv.return_value = mock_dsv_instance
+        class FakeReader2:
+            def __init__(self, *args, **kwargs):
+                pass
 
-        mock_print = mocker.patch("splurge_dsv.cli.print")
-        result = run_cli()
+            def read(self):
+                raise RuntimeError("boom")
 
-        assert result == 1
-        mock_print.assert_called()
+        import splurge_dsv.dsv_helper as dh
+
+        monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader2)
+
+        monkeypatch.setattr("sys.argv", ["splurge-dsv", str(p), "--delimiter", ","])
+        rc = run_cli()
+        assert rc == 1

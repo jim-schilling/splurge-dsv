@@ -135,7 +135,7 @@ class TestFileParsingIntegration:
 class TestFileStreamingIntegration:
     """Test file streaming with actual files."""
 
-    def test_parse_stream_empty_file(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_empty_file(self, tmp_path: Path) -> None:
         """Test streaming empty file."""
         test_file = tmp_path / "empty.csv"
         test_file.write_text("")
@@ -143,7 +143,7 @@ class TestFileStreamingIntegration:
         result = list(DsvHelper.parse_file_stream(test_file, delimiter=","))
         assert result == []
 
-    def test_parse_stream_basic_csv(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_basic_csv(self, tmp_path: Path) -> None:
         """Test streaming basic CSV file."""
         test_file = tmp_path / "test.csv"
         test_file.write_text("a,b,c\nd,e,f\ng,h,i")
@@ -152,7 +152,7 @@ class TestFileStreamingIntegration:
         expected = [[["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]]]
         assert result == expected
 
-    def test_parse_stream_with_quoted_values(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_with_quoted_values(self, tmp_path: Path) -> None:
         """Test streaming file with quoted values."""
         test_file = tmp_path / "test.csv"
         test_file.write_text('"a","b","c"\n"d","e","f"')
@@ -161,7 +161,7 @@ class TestFileStreamingIntegration:
         expected = [[["a", "b", "c"], ["d", "e", "f"]]]
         assert result == expected
 
-    def test_parse_stream_with_skip_header(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_with_skip_header(self, tmp_path: Path) -> None:
         """Test streaming file with header skip."""
         test_file = tmp_path / "test.csv"
         test_file.write_text("header1,header2,header3\na,b,c\nd,e,f")
@@ -170,7 +170,7 @@ class TestFileStreamingIntegration:
         expected = [[["a", "b", "c"], ["d", "e", "f"]]]
         assert result == expected
 
-    def test_parse_stream_nonexistent_file_raises_error(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_nonexistent_file_raises_error(self, tmp_path: Path) -> None:
         """Test that streaming non-existent file raises error."""
         test_file = tmp_path / "nonexistent.csv"
 
@@ -253,7 +253,7 @@ class TestFileEncodingIntegration:
 class TestLargeFileIntegration:
     """Test large file handling."""
 
-    def test_parse_stream_large_file(self, tmp_path: Path) -> None:
+    def test_parse_file_stream_large_file(self, tmp_path: Path) -> None:
         """Test streaming large file."""
         test_file = tmp_path / "large.csv"
 

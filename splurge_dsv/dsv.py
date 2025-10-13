@@ -9,7 +9,7 @@ files, and streaming large inputs.
 
 Public API:
     - DsvConfig: Configuration dataclass for parsing behavior.
-    - Dsv: Parser instance that performs parse/parse_file/parse_stream.
+    - Dsv: Parser instance that performs parse/parse_file/parse_file_stream.
 
 License: MIT
 
@@ -17,7 +17,6 @@ Copyright (c) 2025 Jim Schilling
 """
 
 # Standard library imports
-import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
 from os import PathLike
@@ -44,6 +43,10 @@ class DsvConfig:
         skip_header_rows: Number of header rows to skip when reading files.
         skip_footer_rows: Number of footer rows to skip when reading files.
         chunk_size: Size of chunks for streaming operations.
+        detect_columns: Whether to auto-detect column count from data.
+        raise_on_missing_columns: If True, raise an error if rows have fewer columns than detected
+        raise_on_extra_columns: If True, raise an error if rows have more columns than detected
+        max_detect_chunks: Maximum number of chunks to scan for column detection
 
     Raises:
         SplurgeDsvParameterError: If delimiter is empty, chunk_size is too
@@ -58,6 +61,11 @@ class DsvConfig:
     skip_header_rows: int = 0
     skip_footer_rows: int = 0
     chunk_size: int = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
+    # Column normalization and detection flags
+    detect_columns: bool = False
+    raise_on_missing_columns: bool = False
+    raise_on_extra_columns: bool = False
+    max_detect_chunks: int = DsvHelper.MAX_DETECT_CHUNKS
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization.
@@ -138,6 +146,53 @@ class DsvConfig:
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
         return cls(**filtered_kwargs)
 
+    @classmethod
+    def from_file(cls, file_path: PathLike[str] | Path | str) -> "DsvConfig":
+        """
+        Load a YAML configuration file and return a DsvConfig instance.
+
+        The YAML should contain a mapping whose keys correspond to
+        DsvConfig field names (for example: delimiter, strip, bookend,
+        encoding, skip_header_rows, etc.). Unknown keys are ignored.
+
+        Args:
+            file_path: Path to the YAML configuration file.
+
+        Returns:
+            DsvConfig: Configuration object built from the YAML file.
+
+        Raises:
+            SplurgeDsvParameterError: If the file cannot be read, parsed,
+                or does not contain a mapping at the top level.
+        """
+        try:
+            import yaml  # type: ignore
+        except Exception as e:  # pragma: no cover - dependency issues surfaced elsewhere
+            raise SplurgeDsvParameterError(f"PyYAML is required to load config files: {e}") from e
+
+        p = Path(file_path)
+        if not p.exists():
+            raise SplurgeDsvParameterError(f"Config file '{file_path}' not found")
+
+        try:
+            with p.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+        except Exception as e:
+            raise SplurgeDsvParameterError(f"Failed to read or parse config file '{file_path}': {e}") from e
+
+        if not isinstance(data, dict):
+            raise SplurgeDsvParameterError("Config file must contain a top-level mapping/dictionary of options")
+
+        # Filter and construct via existing from_params helper
+        valid_fields = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_fields}
+
+        # Ensure required values are present in the config (delimiter is required)
+        if "delimiter" not in filtered:
+            raise SplurgeDsvParameterError("Config file must include the required 'delimiter' option")
+
+        return cls.from_params(**filtered)
+
 
 class Dsv:
     """Parser class that binds a :class:`DsvConfig` to parsing operations.
@@ -174,6 +229,7 @@ class Dsv:
 
         Raises:
             SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvColumnMismatchError: If column validation fails.
         """
         return DsvHelper.parse(
             content,
@@ -181,6 +237,9 @@ class Dsv:
             strip=self.config.strip,
             bookend=self.config.bookend,
             bookend_strip=self.config.bookend_strip,
+            normalize_columns=0,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
         )
 
     def parses(self, content: list[str]) -> list[list[str]]:
@@ -193,6 +252,10 @@ class Dsv:
         Returns:
             List of lists of parsed strings
 
+        Raises:
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+
         Example:
             >>> parser = Dsv(DsvConfig(delimiter=","))
             >>> parser.parses(["a,b", "c,d"])
@@ -204,6 +267,10 @@ class Dsv:
             strip=self.config.strip,
             bookend=self.config.bookend,
             bookend_strip=self.config.bookend_strip,
+            normalize_columns=0,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
+            detect_columns=self.config.detect_columns,
         )
 
     def parse_file(self, file_path: PathLike[str] | Path | str) -> list[list[str]]:
@@ -220,6 +287,8 @@ class Dsv:
             SplurgeDsvFileNotFoundError: If the file cannot be found.
             SplurgeDsvFilePermissionError: If the file cannot be read.
             SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
             SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file(
@@ -231,6 +300,9 @@ class Dsv:
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
             skip_footer_rows=self.config.skip_footer_rows,
+            detect_columns=self.config.detect_columns,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
         )
 
     def parse_file_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
@@ -251,6 +323,8 @@ class Dsv:
             SplurgeDsvFileNotFoundError: If the file cannot be found.
             SplurgeDsvFilePermissionError: If the file cannot be read.
             SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvColumnMismatchError: If column validation fails.
+            SplurgeDsvParameterError: If the configured delimiter is invalid.
             SplurgeDsvError: For other unexpected errors.
         """
         return DsvHelper.parse_file_stream(
@@ -262,35 +336,9 @@ class Dsv:
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
             skip_footer_rows=self.config.skip_footer_rows,
+            detect_columns=self.config.detect_columns,
+            raise_on_missing_columns=self.config.raise_on_missing_columns,
+            raise_on_extra_columns=self.config.raise_on_extra_columns,
             chunk_size=self.config.chunk_size,
+            max_detect_chunks=self.config.max_detect_chunks,
         )
-
-    def parse_stream(self, file_path: PathLike[str] | Path | str) -> Iterator[list[list[str]]]:
-        """Stream-parse a DSV file, yielding chunks of parsed rows.
-
-        The method yields lists of parsed rows (each row itself is a list of
-        strings). Chunk sizing is controlled by the bound configuration's
-        ``chunk_size`` value.
-
-        Args:
-            file_path: Path to the file to parse.
-
-        Yields:
-            Lists of parsed rows, each list containing up to ``chunk_size`` rows.
-
-        Raises:
-            SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvFileNotFoundError: If the file cannot be found.
-            SplurgeDsvFilePermissionError: If the file cannot be read.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
-            SplurgeDsvError: For other unexpected errors.
-
-        Deprecated: Use `parse_file_stream` instead. This method will be removed in a future release.
-        """
-        # Emit a DeprecationWarning to signal removal in a future release
-        warnings.warn(
-            "Dsv.parse_stream() is deprecated and will be removed in a future release; use Dsv.parse_file_stream() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return Dsv.parse_file_stream(self, file_path)

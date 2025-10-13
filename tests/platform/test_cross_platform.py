@@ -9,9 +9,9 @@ This module tests cross-platform compatibility features including:
 import tempfile
 from pathlib import Path
 
+from splurge_safe_io.safe_text_file_reader import SafeTextFileReader
+
 from splurge_dsv import Dsv, DsvConfig
-from splurge_dsv.path_validator import PathValidator
-from splurge_dsv.text_file_helper import TextFileHelper
 
 
 class TestCrossPlatformCompatibility:
@@ -173,7 +173,8 @@ class TestCrossPlatformCompatibility:
         crlf_file = tmp_path / "crlf_stream.csv"
         crlf_file.write_bytes(crlf_data.encode("utf-8"))
 
-        crlf_lines = list(TextFileHelper.read_as_stream(str(crlf_file), encoding="utf-8"))
+        reader = SafeTextFileReader(Path(crlf_file))
+        crlf_lines = list(reader.read_as_stream())
         # Flatten chunks to get individual lines
         crlf_lines_flat = [line for chunk in crlf_lines for line in chunk]
         assert len(crlf_lines_flat) == 3
@@ -183,50 +184,12 @@ class TestCrossPlatformCompatibility:
         lf_data = "line1\nline2\nline3\n"
         lf_file = tmp_path / "lf_stream.csv"
         lf_file.write_text(lf_data, encoding="utf-8")
-
-        lf_lines = list(TextFileHelper.read_as_stream(str(lf_file), encoding="utf-8"))
+        reader = SafeTextFileReader(Path(lf_file))
+        lf_lines = list(reader.read_as_stream())
         # Flatten chunks to get individual lines
         lf_lines_flat = [line for chunk in lf_lines for line in chunk]
         assert len(lf_lines_flat) == 3
         assert lf_lines_flat == ["line1", "line2", "line3"]
-
-    def test_path_validation_cross_platform(self, tmp_path):
-        """Test path validation works consistently across platforms."""
-        # Test safe paths
-        safe_paths = ["file.csv", "subdir/file.csv", "path/to/file.csv", "file-name_123.csv"]
-
-        for path_str in safe_paths:
-            assert PathValidator.is_safe_path(path_str), f"Path should be safe: {path_str}"
-
-        # Test unsafe paths (path traversal attempts). The authoritative
-        # behavior for what constitutes a "safe" path is provided by
-        # splurge_safe_io. Here we assert that our shim delegates to the
-        # external library by comparing results.
-        from splurge_safe_io import path_validator as _safe
-
-        unsafe_paths = ["../file.csv", "..\\file.csv", "path/../../../file.csv", "path\\..\\..\\file.csv"]
-
-        for path_str in unsafe_paths:
-            assert PathValidator.is_safe_path(path_str) == _safe.PathValidator.is_safe_path(path_str)
-
-    def test_filename_sanitization_cross_platform(self):
-        """Test filename sanitization works consistently."""
-        # Test cases that should be sanitized
-        test_cases = [
-            ("file<name>.csv", "file_name_.csv"),  # Invalid chars
-            ("file:name.csv", "file_name.csv"),
-            ('file"name.csv', "file_name.csv"),
-            ("file|name.csv", "file_name.csv"),
-            ("file?name.csv", "file_name.csv"),
-            ("file*name.csv", "file_name.csv"),
-            ("file name.csv", "file name.csv"),  # Spaces allowed
-            ("file.name.csv", "file.name.csv"),  # Dots allowed
-            ("file_123.csv", "file_123.csv"),  # Underscores allowed
-        ]
-
-        for input_name, expected in test_cases:
-            result = PathValidator.sanitize_filename(input_name)
-            assert result == expected, f"Expected {expected}, got {result} for input {input_name}"
 
     def test_temporary_file_handling(self, tmp_path):
         """Test handling of temporary files created by different systems."""
