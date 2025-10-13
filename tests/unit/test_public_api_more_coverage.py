@@ -9,7 +9,7 @@ from splurge_dsv.exceptions import SplurgeDsvFileDecodingError
 
 def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys, cli_args):
     missing = tmp_path / "does_not_exist.csv"
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: cli_args(missing))
+    monkeypatch.setattr("sys.argv", ["splurge-dsv", str(missing), "--delimiter", ","])
 
     rc = run_cli()
     captured = capsys.readouterr()
@@ -21,10 +21,11 @@ def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys, cli_args):
 def test_run_cli_parse_file_outputs(output_format, monkeypatch, tmp_path, capsys, cli_args):
     f = tmp_path / "data.csv"
     f.write_text("a,b\n1,2\n3,4\n")
-
-    args = cli_args(f)
-    args.output_format = output_format
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
+    # Run the CLI end-to-end by setting argv
+    argv = ["splurge-dsv", str(f), "--delimiter", ","]
+    if output_format != "table":
+        argv += ["--output-format", output_format]
+    monkeypatch.setattr("sys.argv", argv)
 
     rc = run_cli()
     captured = capsys.readouterr()
@@ -55,12 +56,18 @@ def test_run_cli_streaming_outputs(output_format, monkeypatch, tmp_path, capsys,
     rows = ["h1,h2"] + [f"v{i},w{i}" for i in range(1, 5)]
     f.write_text("\n".join(rows) + "\n")
 
-    args = cli_args(f)
-    args.stream = True
-    # Use the library minimum chunk size to avoid parameter validation
-    args.chunk_size = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
-    args.output_format = output_format
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
+    argv = [
+        "splurge-dsv",
+        str(f),
+        "--delimiter",
+        ",",
+        "--stream",
+        "--chunk-size",
+        str(DsvHelper.DEFAULT_MIN_CHUNK_SIZE),
+    ]
+    if output_format != "table":
+        argv += ["--output-format", output_format]
+    monkeypatch.setattr("sys.argv", argv)
 
     rc = run_cli()
     captured = capsys.readouterr()
@@ -162,13 +169,17 @@ def test_stream_chunk_materialization_and_mismatch(monkeypatch, tmp_path, capsys
 
     # Monkeypatch Dsv.parse_file_stream so CLI receives raw chunks and performs materialization
     monkeypatch.setattr(dmod.Dsv, "parse_file_stream", fake_parse_file_stream, raising=False)
-
     # Run through the CLI path to ensure mismatch inspection branch is exercised
-    args = cli_args(p)
-    args.stream = True
-    args.chunk_size = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
-    args.output_format = "table"
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
+    argv = [
+        "splurge-dsv",
+        str(p),
+        "--delimiter",
+        ",",
+        "--stream",
+        "--chunk-size",
+        str(DsvHelper.DEFAULT_MIN_CHUNK_SIZE),
+    ]
+    monkeypatch.setattr("sys.argv", argv)
 
     rc = run_cli()
     captured = capsys.readouterr()

@@ -3,11 +3,12 @@ Additional CLI tests covering remaining flags and --version behavior.
 """
 
 import sys
+from pathlib import Path
 
 import pytest
 
 from splurge_dsv import __version__
-from splurge_dsv.cli import parse_arguments
+from splurge_dsv.cli import parse_arguments, run_cli
 
 
 def test_parse_arguments_max_detect_chunks_and_output_formats(mocker):
@@ -31,92 +32,51 @@ def test_parse_arguments_max_detect_chunks_and_output_formats(mocker):
 
 
 def test_run_cli_json_and_ndjson_modes(mocker, capsys):
-    # Patch parse_arguments to simulate json output mode and ndjson
-    mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-    mock_path = mocker.patch("splurge_dsv.cli.Path")
-    mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
+    # End-to-end: create a temp file and run run_cli in json and ndjson modes
+    # JSON mode prints a single JSON array
+    td = Path("tmp")
+    td.mkdir(exist_ok=True)
+    p = td / "json_mode.csv"
+    p.write_text("a,b\n1,2\n3,4\n", encoding="utf-8")
 
-    # Prepare path
-    mock_path_instance = mocker.MagicMock()
-    mock_path_instance.exists.return_value = True
-    mock_path_instance.is_file.return_value = True
-    mock_path.return_value = mock_path_instance
+    monkeypatch = __import__("pytest").MonkeyPatch()
+    try:
+        monkeypatch.setattr(sys, "argv", ["splurge-dsv", str(p), "--delimiter", ",", "--output-format", "json"])
+        rc = run_cli()
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "[" in captured.out
 
-    # JSON mode: parse_file returns rows
-    mock_args = mocker.MagicMock()
-    mock_args.file_path = "test.csv"
-    mock_args.delimiter = ","
-    mock_args.no_strip = False
-    mock_args.bookend = None
-    mock_args.no_bookend_strip = False
-    mock_args.encoding = "utf-8"
-    mock_args.skip_header = 0
-    mock_args.skip_footer = 0
-    mock_args.stream = False
-    mock_args.chunk_size = 500
-    mock_args.output_format = "json"
-    mock_parse.return_value = mock_args
-
-    mock_dsv_instance = mocker.MagicMock()
-    mock_dsv_instance.parse_file.return_value = [["a", "b"], ["c", "d"]]
-    mock_dsv.return_value = mock_dsv_instance
-
-    from splurge_dsv.cli import run_cli
-
-    result = run_cli()
-    assert result == 0
-    captured = capsys.readouterr()
-    # Should print a JSON array
-    assert "[" in captured.out
-
-    # NDJSON mode: stream rows via parse_file
-    mock_args.output_format = "ndjson"
-    mock_dsv_instance.parse_file.return_value = [["x", "y"], ["z", "w"]]
-    result = run_cli()
-    assert result == 0
-    captured = capsys.readouterr()
-    # Should print ndjson lines
-    assert "\n" in captured.out
+        # NDJSON mode prints one JSON object per line
+        monkeypatch.setattr(sys, "argv", ["splurge-dsv", str(p), "--delimiter", ",", "--output-format", "ndjson"])
+        rc = run_cli()
+        assert rc == 0
+        captured = capsys.readouterr()
+        # Should contain multiple lines
+        assert "\n" in captured.out
+    finally:
+        monkeypatch.undo()
 
 
 def test_run_cli_stream_json_suppresses_progress_prints(mocker, capsys):
-    mock_parse = mocker.patch("splurge_dsv.cli.parse_arguments")
-    mock_path = mocker.patch("splurge_dsv.cli.Path")
-    mock_dsv = mocker.patch("splurge_dsv.cli.Dsv")
+    # End-to-end: create a file large enough to stream and run with --stream --output-format json
+    td = Path("tmp")
+    td.mkdir(exist_ok=True)
+    p = td / "stream_json.csv"
+    rows = ["h1,h2"] + [f"v{i},w{i}" for i in range(1, 20)]
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-    # Prepare path
-    mock_path_instance = mocker.MagicMock()
-    mock_path_instance.exists.return_value = True
-    mock_path_instance.is_file.return_value = True
-    mock_path.return_value = mock_path_instance
-
-    # Streaming + json output should not print the "Streaming file" progress line
-    mock_args = mocker.MagicMock()
-    mock_args.file_path = "test.csv"
-    mock_args.delimiter = ","
-    mock_args.no_strip = False
-    mock_args.bookend = None
-    mock_args.no_bookend_strip = False
-    mock_args.encoding = "utf-8"
-    mock_args.skip_header = 0
-    mock_args.skip_footer = 0
-    mock_args.stream = True
-    mock_args.chunk_size = 500
-    mock_args.output_format = "json"
-    mock_parse.return_value = mock_args
-
-    # Dsv.parse_file_stream yields chunks
-    mock_dsv_instance = mocker.MagicMock()
-    mock_dsv_instance.parse_file_stream.return_value = iter([[["a", "b"]]])
-    mock_dsv.return_value = mock_dsv_instance
-
-    from splurge_dsv.cli import run_cli
-
-    result = run_cli()
-    assert result == 0
-    captured = capsys.readouterr()
-    # No progress string when json
-    assert "Streaming file" not in captured.out
+    monkeypatch = __import__("pytest").MonkeyPatch()
+    try:
+        monkeypatch.setattr(
+            sys, "argv", ["splurge-dsv", str(p), "--delimiter", ",", "--stream", "--output-format", "json"]
+        )
+        rc = run_cli()
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Streaming file" not in captured.out
+    finally:
+        monkeypatch.undo()
 
 
 def test_version_flag_shows_version(monkeypatch, capsys):

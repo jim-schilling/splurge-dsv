@@ -51,7 +51,20 @@ Examples:
 
     parser.add_argument("file_path", type=str, help="Path to the DSV file to parse")
 
-    parser.add_argument("--delimiter", "-d", type=str, required=True, help="Delimiter character to use for parsing")
+    parser.add_argument(
+        "--config",
+        "-c",
+        dest="config",
+        type=str,
+        help="Path to a YAML config file that mirrors CLI options (values overridden by CLI args)",
+    )
+
+    parser.add_argument(
+        "--delimiter",
+        "-d",
+        type=str,
+        help="Delimiter character to use for parsing (may also be provided via --config)",
+    )
 
     parser.add_argument("--bookend", "-b", type=str, help="Bookend character for text fields (e.g., '\"')")
 
@@ -186,21 +199,55 @@ def run_cli() -> int:
             print(f"Error: '{args.file_path}' is not a file.", file=sys.stderr)
             return 1
 
+        # Build base config either from YAML file (if provided) or from CLI args
+        base_params = {}
+        if args.config:
+            try:
+                import yaml  # type: ignore
+
+                cfg_path = Path(args.config)
+                if not cfg_path.exists():
+                    print(f"Error: Config file '{args.config}' not found.", file=sys.stderr)
+                    return 1
+
+                with cfg_path.open("r", encoding="utf-8") as fh:
+                    file_cfg = yaml.safe_load(fh) or {}
+
+                if not isinstance(file_cfg, dict):
+                    print(f"Error: Config file '{args.config}' must contain a mapping/dictionary.", file=sys.stderr)
+                    return 1
+
+                base_params.update(file_cfg)
+            except Exception as e:
+                print(f"Error reading config file '{args.config}': {e}", file=sys.stderr)
+                return 1
+
+        # CLI args override YAML values when provided. Build the parameter map
+        cli_params = {
+            "delimiter": args.delimiter,
+            "strip": not args.no_strip,
+            "bookend": args.bookend,
+            "bookend_strip": not args.no_bookend_strip,
+            "encoding": args.encoding,
+            "skip_header_rows": args.skip_header,
+            "skip_footer_rows": args.skip_footer,
+            "chunk_size": args.chunk_size,
+            "detect_columns": args.detect_columns,
+            "raise_on_missing_columns": args.raise_on_missing_columns,
+            "raise_on_extra_columns": args.raise_on_extra_columns,
+            "max_detect_chunks": args.max_detect_chunks,
+        }
+
+        # Merge: start from file (if any), then overlay CLI-provided values
+        merged = {**base_params, **{k: v for k, v in cli_params.items() if v is not None}}
+
         # Create configuration and Dsv instance for parsing
-        config = DsvConfig(
-            delimiter=args.delimiter,
-            strip=not args.no_strip,
-            bookend=args.bookend,
-            bookend_strip=not args.no_bookend_strip,
-            encoding=args.encoding,
-            skip_header_rows=args.skip_header,
-            skip_footer_rows=args.skip_footer,
-            chunk_size=args.chunk_size,
-            detect_columns=args.detect_columns,
-            raise_on_missing_columns=args.raise_on_missing_columns,
-            raise_on_extra_columns=args.raise_on_extra_columns,
-            max_detect_chunks=args.max_detect_chunks,
-        )
+        try:
+            config = DsvConfig.from_params(**merged)
+        except Exception as e:
+            print(f"Error building configuration: {e}", file=sys.stderr)
+            return 1
+        dsv = Dsv(config)
         dsv = Dsv(config)
 
         # Parse the file
@@ -212,13 +259,8 @@ def run_cli() -> int:
 
             try:
                 for chunk in dsv.parse_file_stream(file_path):
-                    # Streaming loop: each `chunk` is a list of parsed rows.
                     chunk_count += 1
-                    try:
-                        total_rows += len(chunk)
-                    except TypeError:
-                        # Defensive: if chunk is an iterator, count manually
-                        total_rows += sum(1 for _ in chunk)
+                    total_rows += len(chunk)
 
                     if args.output_format == "json":
                         print(json.dumps(chunk, ensure_ascii=False))

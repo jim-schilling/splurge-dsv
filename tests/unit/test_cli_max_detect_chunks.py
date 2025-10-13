@@ -18,8 +18,6 @@ def test_cli_passes_max_detect_chunks_to_streaming(monkeypatch, tmp_path, cli_ar
     args.chunk_size = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
     args.max_detect_chunks = 5
 
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
-
     # Intercept Dsv.parse_file_stream to assert config value is propagated
     def fake_parse_file_stream(self, file_path):
         assert isinstance(self.config, DsvConfig)
@@ -28,6 +26,25 @@ def test_cli_passes_max_detect_chunks_to_streaming(monkeypatch, tmp_path, cli_ar
         yield []
 
     monkeypatch.setattr(Dsv, "parse_file_stream", fake_parse_file_stream, raising=False)
+
+    # Run CLI end-to-end with args
+    import sys as _sys
+
+    monkeypatch.setattr(
+        _sys,
+        "argv",
+        [
+            "splurge-dsv",
+            str(f),
+            "--delimiter",
+            ",",
+            "--stream",
+            "--chunk-size",
+            str(DsvHelper.DEFAULT_MIN_CHUNK_SIZE),
+            "--max-detect-chunks",
+            "5",
+        ],
+    )
 
     rc = run_cli()
     assert rc == 0
@@ -41,14 +58,16 @@ def test_cli_passes_max_detect_chunks_to_non_stream(monkeypatch, tmp_path, cli_a
     args.stream = False
     args.max_detect_chunks = 7
 
-    monkeypatch.setattr("splurge_dsv.cli.parse_arguments", lambda: args)
-
     def fake_parse_file(self, file_path):
         assert isinstance(self.config, DsvConfig)
         assert self.config.max_detect_chunks == 7
         return [["a", "b"], ["1", "2"]]
 
     monkeypatch.setattr(Dsv, "parse_file", fake_parse_file, raising=False)
+
+    import sys as _sys
+
+    monkeypatch.setattr(_sys, "argv", ["splurge-dsv", str(f), "--delimiter", ",", "--max-detect-chunks", "7"])
 
     rc = run_cli()
     assert rc == 0

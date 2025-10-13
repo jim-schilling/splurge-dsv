@@ -146,6 +146,53 @@ class DsvConfig:
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
         return cls(**filtered_kwargs)
 
+    @classmethod
+    def from_file(cls, file_path: PathLike[str] | Path | str) -> "DsvConfig":
+        """
+        Load a YAML configuration file and return a DsvConfig instance.
+
+        The YAML should contain a mapping whose keys correspond to
+        DsvConfig field names (for example: delimiter, strip, bookend,
+        encoding, skip_header_rows, etc.). Unknown keys are ignored.
+
+        Args:
+            file_path: Path to the YAML configuration file.
+
+        Returns:
+            DsvConfig: Configuration object built from the YAML file.
+
+        Raises:
+            SplurgeDsvParameterError: If the file cannot be read, parsed,
+                or does not contain a mapping at the top level.
+        """
+        try:
+            import yaml  # type: ignore
+        except Exception as e:  # pragma: no cover - dependency issues surfaced elsewhere
+            raise SplurgeDsvParameterError(f"PyYAML is required to load config files: {e}") from e
+
+        p = Path(file_path)
+        if not p.exists():
+            raise SplurgeDsvParameterError(f"Config file '{file_path}' not found")
+
+        try:
+            with p.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+        except Exception as e:
+            raise SplurgeDsvParameterError(f"Failed to read or parse config file '{file_path}': {e}") from e
+
+        if not isinstance(data, dict):
+            raise SplurgeDsvParameterError("Config file must contain a top-level mapping/dictionary of options")
+
+        # Filter and construct via existing from_params helper
+        valid_fields = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_fields}
+
+        # Ensure required values are present in the config (delimiter is required)
+        if "delimiter" not in filtered:
+            raise SplurgeDsvParameterError("Config file must include the required 'delimiter' option")
+
+        return cls.from_params(**filtered)
+
 
 class Dsv:
     """Parser class that binds a :class:`DsvConfig` to parsing operations.

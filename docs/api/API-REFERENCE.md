@@ -17,9 +17,6 @@ up-to-date, detailed explanations.
   - `DsvHelper`
 - File & token helpers
   - `StringTokenizer`
-  - `SafeTextFileReader` / `open_text`
-  - `SafeTextFileWriter` / `open_text_writer`
-  - Path validation (`PathValidator`) — provided by `splurge-safe-io`
 - CLI
   - `parse_arguments` and `run_cli`
 - Exceptions and Error Mapping
@@ -291,8 +288,8 @@ Notes:
 Low-level file reading, newline normalization, and secure path handling are
 provided by the `splurge-safe-io` dependency. The library uses:
 
-- `SafeTextFileReader` / `open_text` for robust file reads and decoding
-- `SafeTextFileWriter` / `open_text_writer` for robust writes
+- `SafeTextFileReader` for robust file reads and decoding
+- `SafeTextFileWriter` for robust writes
 - `PathValidator` for secure path checks
 
 The `splurge_dsv` package maps errors from `splurge-safe-io` into its own
@@ -376,6 +373,58 @@ Behavior notes:
   (for example streaming plus an output format that requires full
   materialization) will produce informative error messages and non-zero exit
   codes.
+
+### `--config` / `-c` YAML configuration file
+
+The CLI accepts a YAML configuration file containing keys that mirror
+`DsvConfig` fields. When supplied, the YAML file is used as the base
+configuration and explicitly provided CLI flags override values from the
+file.
+
+Rules and behavior:
+
+- The YAML file must be a top-level mapping/dictionary. Non-mapping YAML
+  will cause the CLI to fail with a helpful error message.
+- Keys that don't match `DsvConfig` field names are ignored by the loader.
+- The CLI overlays values on top of the YAML mapping; any CLI-specified
+  value takes precedence.
+- If PyYAML is not installed and `--config` is used, the CLI will exit
+  with an error instructing the user to install `PyYAML`.
+
+Example `config.yaml`:
+
+```yaml
+delimiter: ","
+strip: true
+bookend: '"'
+encoding: utf-8
+skip_header_rows: 1
+skip_footer_rows: 0
+detect_columns: true
+chunk_size: 500
+max_detect_chunks: 5
+raise_on_missing_columns: false
+raise_on_extra_columns: false
+```
+
+Example usage:
+
+```bash
+# Base config from YAML, CLI overrides delimiter
+python -m splurge_dsv data.csv --config config.yaml --delimiter "|"
+
+# Use only YAML for configuration
+python -m splurge_dsv data.csv --config config.yaml
+```
+
+Library usage:
+
+```python
+from splurge_dsv.dsv import DsvConfig
+
+# Construct from a YAML file programmatically
+cfg = DsvConfig.from_file('config.yaml')
+```
 
 ---
 
@@ -472,11 +521,3 @@ Key changes and migration guidance:
   CLI reference above for details.
 - Deprecation: the legacy `parse_stream()` helpers were removed — use
   `parse_file_stream()` on `Dsv` / `DsvHelper` instead.
-
-If you'd like, I can also:
-
-- Generate a condensed markdown table of all public functions and their
-  signatures for quick scanning.
-- Add a cross-reference that maps each unit/integration test that touches
-  `dsv_helper.py` to the lines it covers (requires running coverage with
-  per-test tracing).

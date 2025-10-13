@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 [![CI](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml/badge.svg)](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+[![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![mypy](https://img.shields.io/badge/mypy-checked-black)](https://mypy-lang.org/)
 
@@ -24,7 +24,7 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 273 tests with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 279 tests with 92% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
 **⚠️ CHANGES in v2025.3.0**
 > - The legacy `parse_stream()` helpers were removed in release 2025.3.0.
@@ -75,6 +75,39 @@ python -m splurge_dsv data.csv --delimiter ,
 
 # Stream a large file
 python -m splurge_dsv large_file.csv --delimiter , --stream --chunk-size 1000
+```
+
+### YAML configuration file
+
+You can place CLI-equivalent options in a YAML file and pass it to the CLI
+using `--config` (or `-c`). CLI arguments override values found in the
+YAML file. Example `config.yaml`:
+
+```yaml
+delimiter: ","
+strip: true
+bookend: '"'
+encoding: utf-8
+skip_header_rows: 1
+detect_columns: true
+chunk_size: 500
+max_detect_chunks: 5
+raise_on_missing_columns: false
+raise_on_extra_columns: false
+```
+
+Usage with CLI:
+
+```bash
+python -m splurge_dsv data.csv --config config.yaml --delimiter "|"
+# The CLI delimiter '|' overrides the YAML delimiter
+```
+
+Example using the shipped example config in the repository:
+
+```bash
+# Use the example file provided at examples/config.yaml
+python -m splurge_dsv data.csv --config examples/config.yaml
 ```
 
 ### API Usage
