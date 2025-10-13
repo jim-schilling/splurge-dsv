@@ -225,7 +225,7 @@ class TestDsvHelperEdgeCases:
         with pytest.raises(SplurgeDsvColumnMismatchError):
             DsvHelper.parse("a,b,c,d", delimiter=",", normalize_columns=3, raise_on_extra_columns=True)
 
-    def test_parses_detect_normalize_in_memory(self) -> None:
+    def test_parses_detect_columns_in_memory(self) -> None:
         """Test detects expected columns from first non-blank line in memory."""
 
     content = ["", "a,b,c", "d,e"]

@@ -96,13 +96,13 @@ class TestCliParseArguments:
                 "test.csv",
                 "--delimiter",
                 ",",
-                "--detect-normalize-columns",
+                "--detect-columns",
                 "--raise-on-missing-columns",
                 "--raise-on-extra-columns",
             ],
         )
         args = parse_arguments()
-        assert args.detect_normalize_columns
+        assert args.detect_columns
         assert args.raise_on_missing_columns
         assert args.raise_on_extra_columns
 
@@ -240,9 +240,9 @@ class TestCliMain:
         mock_path_instance.is_file.return_value = True
         mock_path.return_value = mock_path_instance
 
-        # Mock Dsv instance and its parse_stream method
+        # Mock Dsv instance and its parse_file_stream method
         mock_dsv_instance = mocker.MagicMock()
-        mock_dsv_instance.parse_stream.return_value = iter([[["a", "b"], ["c", "d"]]])
+        mock_dsv_instance.parse_file_stream.return_value = iter([[["a", "b"], ["c", "d"]]])
         mock_dsv.return_value = mock_dsv_instance
 
         # Mock command line arguments

@@ -404,7 +404,7 @@ class DsvHelper:
     ) -> list[list[str]]:
         """Parse a chunk of lines into tokenized rows.
 
-        Designed to be used by :meth:`parse_stream` as a helper for converting a
+        Designed to be used by :meth:`parse_file_stream` as a helper for converting a
         batch of raw lines into parsed rows.
 
         Args:

@@ -42,10 +42,10 @@ Examples:
   python -m splurge_dsv data.csv --delimiter ,
   python -m splurge_dsv data.tsv --delimiter "\t"
   python -m splurge_dsv data.txt --delimiter "|" --bookend '"'
-  # Auto-detect the expected column count and normalize rows; scan up to 5 chunks
-  python -m splurge_dsv data.csv --delimiter , --detect-normalize-columns --max-detect-chunks 5
-  # Stream a large file while attempting to detect the column count from the start
-  python -m splurge_dsv large.csv --delimiter , --stream --detect-normalize-columns --max-detect-chunks 10
+  # Auto-detect the expected column count and normalize rows
+  python -m splurge_dsv data.csv --delimiter , --detect-columns --max-detect-chunks 5
+  # Stream a large file while attempting to detect the column count from the first non-blank logical row
+  python -m splurge_dsv large.csv --delimiter , --stream --detect-columns --max-detect-chunks 10
     """,
     )
 
@@ -70,7 +70,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--detect-normalize-columns",
+        "--detect-columns",
         action="store_true",
         help=(
             "Auto-detect the expected column count from the first non-blank logical row "
@@ -196,7 +196,7 @@ def run_cli() -> int:
             skip_header_rows=args.skip_header,
             skip_footer_rows=args.skip_footer,
             chunk_size=args.chunk_size,
-            detect_columns=args.detect_normalize_columns,
+            detect_columns=args.detect_columns,
             raise_on_missing_columns=args.raise_on_missing_columns,
             raise_on_extra_columns=args.raise_on_extra_columns,
             max_detect_chunks=args.max_detect_chunks,

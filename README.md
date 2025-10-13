@@ -13,12 +13,27 @@ A robust Python library for parsing and processing delimited-separated value (DS
 
 ## Features
 
-- **Multi-format DSV Support**: Parse CSV, TSV, pipe-delimited, and custom delimiter files
+- **Multi-format DSV Support**: Parse CSV, TSV, pipe-delimited, and custom delimiter separated value files/objects
+- **Configurable Parsing**: Flexible options for delimiters, quote characters, escape characters, header/footer row(s) handling
 - **Memory-Efficient Streaming**: Process large files without loading entire content into memory
 - **Security & Validation**: Comprehensive path validation and file permission checks
 - **Unicode Support**: Full Unicode character and encoding support
 - **Type Safety**: Full type annotations with mypy validation
-- **Comprehensive Testing**: 420 tests (409 passed, 11 skipped) with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility
+- **Deterministic Newline Handling**: Consistent handling of CRLF, CR, and LF newlines across platforms
+- **CLI Tool**: Command-line interface for quick parsing and inspection of DSV files
+- **Robust Error Handling**: Clear and specific exceptions for various error scenarios
+- **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
+- **Comprehensive Documentation**: In-depth API reference and usage examples
+- **Exhaustive Testing**: 273 tests with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+
+**⚠️ CHANGES in v2025.3.0**
+> - The legacy `parse_stream()` helpers were removed in release 2025.3.0.
+>   - Use `parse_file_stream()` on `Dsv`/`DsvHelper` for stream-based parsing of files. This standardizes the API naming and clarifies that streaming helpers accept file paths rather than arbitrary iterables.
+> - TextFileHelper, SafeTextFileReader, SafeTextFileWriter, and PathValidator, as well as all their associated tests have been removed in this release.
+>   - Their functionality has been migrated in favor of the `splurge-safe-io` package, which provides robust and secure file I/O operations.
+>   - This change reduces code duplication and improves maintainability by leveraging the functionality of `splurge-safe-io`.
+>   - Users should refer to the `splurge-safe-io` documentation for details on its usage and features.
+> - **See API-REFERENCE.md for migration guidance and complete reference documentation, with usage examples.**
 
 **⚠️ CHANGES in v2025.2.2**
 > - **Deprecated Warning**: The following modules and their associated classes and functions are deprecated and will be removed in a future release (2025.3.0). Users are encouraged to transition to the `splurge-safe-io` package for these functionalities:

@@ -9,7 +9,7 @@ files, and streaming large inputs.
 
 Public API:
     - DsvConfig: Configuration dataclass for parsing behavior.
-    - Dsv: Parser instance that performs parse/parse_file/parse_stream.
+    - Dsv: Parser instance that performs parse/parse_file/parse_file_stream.
 
 License: MIT
 

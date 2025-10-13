@@ -31,7 +31,7 @@ def cli_args() -> Callable[[str], argparse.Namespace]:
             stream=False,
             chunk_size=500,
             output_format="table",
-            detect_normalize_columns=False,
+            detect_columns=False,
             raise_on_missing_columns=False,
             raise_on_extra_columns=False,
             max_detect_chunks=None,
