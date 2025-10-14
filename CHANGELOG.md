@@ -4,8 +4,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
-## [2025.3.0] - 2025-10-11
+## [2025.3.1/2025.3.0] - 2025-10-13
 
+### Added
+- **YAML configuration support**: Add `DsvConfig.from_file()` to load parser configuration from a YAML file and allow users to provide a `--config / -c` YAML file to the CLI. Unknown keys in the YAML are ignored and CLI args override YAML values.
+- **`skip_empty_lines` integration**: Support `skip_empty_lines` (reader-level) throughout the API:
+  - `DsvConfig.skip_empty_lines` field was added (default: False).
+  - `--skip-empty-lines` CLI flag added; merged with YAML config and CLI precedence rules.
+  - `DsvHelper` and `Dsv` forward `skip_empty_lines` into the underlying `splurge_safe_io.SafeTextFileReader` so the reader can perform blank-line filtering when requested.
+- **Examples & docs**: Added an example config file (`examples/config.yaml`) and updated README and API reference docs to document YAML configuration and the new flag.
+- **Large-file streaming semantics**: Stream parsing behavior was clarified and simplified to rely on the reader for empty-line suppression; the stream now yields parsed chunks directly and the reader controls whether empty logical lines are presented.
+
+### Changed
+- **CLI merging and options**: CLI `--config` (YAML) now merges with CLI args; CLI arguments always override YAML settings. The CLI accepts more configuration via YAML (encoding, skip counts, chunk-size, skip_empty_lines, etc.).
+- **Tests converted to end-to-end style**: Several fragile tests that previously mocked internals were converted to end-to-end style (temporary files + real `run_cli()`/`Dsv` usage) to improve reliability.
+- **Updated dependency**: Bumped `splurge-safe-io` integration to use the reader's `skip_empty_lines` capability when available (work with v2025.0.5+).
+- **Yield behavior**: The streaming layer now yields parsed chunks unconditionally (instead of suppressing empty parsed-chunks) and relies on the reader's `skip_empty_lines` to remove meaningless empty logical rows when requested.
+
+### Fixed
+- **Lint and minor code cleanups**: Minor ruff fixes (including replacing an unnecessary list-comprehension with `list()`), type hints, and small test refactors.
+- **Test harness & compatibility**: Adjusted `tests/conftest.py` to prefer the installed `splurge_safe_io` package (and fallbacks/shims used during development), stabilizing CI and developer test runs.
+
+### Tests
+- Added unit tests to validate the new `skip_empty_lines` behavior across encodings and stream/file APIs (utf-8 and utf-16; skip True/False). Added and updated multiple CLI and parsing tests to exercise the YAML/CLI merging and streaming behaviors.
+
+### Notes
+- These releases consolidate a number of refactors around streaming, configuration, and test hardening. Backwards compatibility is preserved by default configuration values; new behaviors (for example, skipping empty lines) are opt-in via `DsvConfig.skip_empty_lines` or the CLI flag.
+
+### Removed
+- **Removed internal file helpers and tests**: The following modules and their associated tests were removed from the `splurge_dsv` library as functionality moved to the `splurge-safe-io` package:
+  - `text_file_helper.py`
+  - `path_validator.py`
+  - `safe_text_file_writer.py`
+  - `safe_text_file_reader.py`
+  - Associated unit tests for the above modules were removed or migrated to rely on `splurge-safe-io` behavior.
+  - **Functionality has been preserved via the `splurge-safe-io` package, and users are encouraged to transition to that package for low-level file I/O and path validation needs.**
+
+> **Note**: v2025.3.0 is a commit-only release and will not be published to PyPI.
 
 ## [2025.2.2] - 2025-10-11
 ### Deprecated

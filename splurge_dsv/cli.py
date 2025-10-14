@@ -125,6 +125,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--skip-empty-lines",
+        action="store_true",
+        help="Have the underlying reader skip raw empty logical lines (line.strip() == '') before parsing",
+    )
+
+    parser.add_argument(
         "--output-format",
         choices=["table", "json", "ndjson"],
         default="table",
@@ -236,6 +242,7 @@ def run_cli() -> int:
             "raise_on_missing_columns": args.raise_on_missing_columns,
             "raise_on_extra_columns": args.raise_on_extra_columns,
             "max_detect_chunks": args.max_detect_chunks,
+            "skip_empty_lines": args.skip_empty_lines,
         }
 
         # Merge: start from file (if any), then overlay CLI-provided values

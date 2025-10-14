@@ -24,9 +24,14 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 279 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+
+**⚠️ CHANGES in v2025.3.1**
+> - **skip_empty_lines** option added to `DsvConfig`, `DsvHelper`, and CLI.
+>   - This option allows users to skip logical empty lines when parsing DSV files.
 
 **⚠️ CHANGES in v2025.3.0**
+> - **Commit-Only Release**: v2025.3.0 is a commit-only release and will not be published to PyPI.
 > - The legacy `parse_stream()` helpers were removed in release 2025.3.0.
 >   - Use `parse_file_stream()` on `Dsv`/`DsvHelper` for stream-based parsing of files. This standardizes the API naming and clarifies that streaming helpers accept file paths rather than arbitrary iterables.
 > - TextFileHelper, SafeTextFileReader, SafeTextFileWriter, and PathValidator, as well as all their associated tests have been removed in this release.
@@ -89,6 +94,8 @@ strip: true
 bookend: '"'
 encoding: utf-8
 skip_header_rows: 1
+skip_footer_rows: 0
+skip_empty_lines: false
 detect_columns: true
 chunk_size: 500
 max_detect_chunks: 5
