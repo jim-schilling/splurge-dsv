@@ -16,7 +16,17 @@
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 273 tests with 94% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+
+
+**⚠️ CHANGES in v2025.3.2**
+> - **splurge-safe-io** dependency has been updated to v2025.0.6+.
+>   - This change improves compatibility and stability with the latest features of the `splurge-safe-io` package.
+>   - Code and tests have been updated to align with the new version of the dependency, ensuring continued robust and secure file I/O operations.
+
+**⚠️ CHANGES in v2025.3.1**
+> - **skip_empty_lines** option added to `DsvConfig`, `DsvHelper`, and CLI.
+>   - This option allows users to skip logical empty lines when parsing DSV files.
 
 >**⚠️ CHANGES in v2025.3.0**
 > - The legacy `parse_stream()` helpers were removed in release 2025.3.0.

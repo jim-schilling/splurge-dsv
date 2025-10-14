@@ -35,8 +35,8 @@ def write_test_file(path: Path, n: int) -> list[str]:
 def test_reader_consistency_roundtrip():
     """Writes NUM_LINES lines and asserts three read methods agree.
 
-    - SafeTextFileReader.read()
-    - SafeTextFileReader.read_as_stream() flattened
+    - SafeTextFileReader.readlines()
+    - SafeTextFileReader.readlines_as_stream() flattened
     - open_safe_text_reader() result
     """
     expected = write_test_file(TEST_FILE, NUM_LINES)
@@ -44,11 +44,11 @@ def test_reader_consistency_roundtrip():
     for _ in range(10):
         reader = SafeTextFileReader(TEST_FILE, buffer_size=8192, chunk_size=500)
 
-        actual0 = reader.read()
+        actual0 = reader.readlines()
 
         # Flatten streamed chunks into a single list
         actual1 = []
-        for chunk in reader.read_as_stream():
+        for chunk in reader.readlines_as_stream():
             actual1.extend(chunk)
 
         # open_safe_text_reader yields a StringIO with normalized content

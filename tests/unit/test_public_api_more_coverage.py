@@ -115,7 +115,7 @@ def test_parse_file_raises_decoding_error_monkeypatched(monkeypatch, tmp_path):
         def __init__(self, *args, **kwargs):
             pass
 
-        def read(self):
+        def readlines(self):
             raise FakeDecodeError("boom")
 
     # Patch the reader and the exception name on the module
@@ -139,7 +139,7 @@ def test_parse_file_stream_raises_decoding_error_monkeypatched(monkeypatch, tmp_
         def __init__(self, *args, **kwargs):
             pass
 
-        def read_as_stream(self):
+        def readlines_as_stream(self):
             raise FakeDecodeError("boom stream")
 
     import splurge_dsv.dsv_helper as dh

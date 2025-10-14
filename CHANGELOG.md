@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.3.2] - 2025-10-14
+### Updated
+- Updated test mocks to use `readlines()` instead of deprecated `read()` method, ensuring compatibility with `splurge-safe-io` updates.
+- Updated test mocks to use `readlines_as_stream()` instead of deprecated `read_as_stream()` method, ensuring compatibility with `splurge-safe-io` updates.
+- Updated tests to use `readlines()` and `readlines_as_stream()` for consistency with new reader APIs.
+- Updated dependency versions in test environments to ensure compatibility with latest `splurge-safe-io` release.
+- Updated DsvHelper and Dsv classes to ensure full compatibility with `splurge-safe-io` v2025.0.6+.
+- Updated pyproject.toml and setup.cfg to reflect latest dependency versions.
+- Updated README and documentation to reflect changes in dependencies and APIs.
+
 ## [2025.3.1/2025.3.0] - 2025-10-13
 
 ### Added

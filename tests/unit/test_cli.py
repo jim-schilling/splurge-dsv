@@ -245,7 +245,7 @@ class TestCliMain:
             def __init__(self, *args, **kwargs):
                 pass
 
-            def read(self):
+            def readlines(self):
                 raise KeyboardInterrupt()
 
         # Patch the SafeTextFileReader used by DsvHelper
@@ -271,7 +271,7 @@ class TestCliMain:
             def __init__(self, *args, **kwargs):
                 pass
 
-            def read(self):
+            def readlines(self):
                 raise RuntimeError("boom")
 
         import splurge_dsv.dsv_helper as dh
