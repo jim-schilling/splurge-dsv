@@ -71,7 +71,7 @@ from splurge_dsv.exceptions import (
 )
 from splurge_dsv.string_tokenizer import StringTokenizer
 
-__version__ = "2025.3.0"
+__version__ = "2025.3.1"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 

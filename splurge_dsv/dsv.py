@@ -60,6 +60,10 @@ class DsvConfig:
     encoding: str = "utf-8"
     skip_header_rows: int = 0
     skip_footer_rows: int = 0
+    # When True, instruct the underlying SafeTextFileReader to remove raw
+    # empty logical lines (where line.strip() == "") before returning
+    # content. Defaults to False to preserve historical behavior.
+    skip_empty_lines: bool = False
     chunk_size: int = DsvHelper.DEFAULT_MIN_CHUNK_SIZE
     # Column normalization and detection flags
     detect_columns: bool = False
@@ -299,6 +303,7 @@ class Dsv:
             bookend_strip=self.config.bookend_strip,
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
+            skip_empty_lines=self.config.skip_empty_lines,
             skip_footer_rows=self.config.skip_footer_rows,
             detect_columns=self.config.detect_columns,
             raise_on_missing_columns=self.config.raise_on_missing_columns,
@@ -335,6 +340,7 @@ class Dsv:
             bookend_strip=self.config.bookend_strip,
             encoding=self.config.encoding,
             skip_header_rows=self.config.skip_header_rows,
+            skip_empty_lines=self.config.skip_empty_lines,
             skip_footer_rows=self.config.skip_footer_rows,
             detect_columns=self.config.detect_columns,
             raise_on_missing_columns=self.config.raise_on_missing_columns,

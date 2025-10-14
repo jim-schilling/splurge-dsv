@@ -118,6 +118,7 @@ class DsvConfig:
     skip_header_rows: int = 0
     skip_footer_rows: int = 0
     chunk_size: int = DsvHelper.DEFAULT_CHUNK_SIZE
+    skip_empty_lines: bool = False
     detect_columns: bool = False
     raise_on_missing_columns: bool = False
     raise_on_extra_columns: bool = False
@@ -201,6 +202,7 @@ Public methods (signatures and descriptions):
 
 - `parse_file(self, file_path, *, normalize_columns: int | None = None) -> list[list[str]]`
   - Read and parse the entire file into memory. Uses `DsvConfig.encoding`.
+  - Honors `DsvConfig.skip_empty_lines`: when True the underlying reader will filter out raw empty logical lines (line.strip() == "") before parsing; when False blank lines are passed through and parsed normally.
   - Raises file-related exceptions (see Exceptions section) for IO issues.
 
 - `parse_file_stream(self, file_path, *, normalize_columns: int | None = None) -> Iterator[list[list[str]]]
@@ -210,6 +212,12 @@ Public methods (signatures and descriptions):
     `max_detect_chunks` chunks to find the first non-blank logical row and
     detect the expected column count; buffered chunks are replayed to the
     caller so the file is yielded in-order.
+  - The streaming API also respects `DsvConfig.skip_empty_lines`. If
+    `skip_empty_lines` is True the underlying `SafeTextFileReader` will
+    remove blank logical lines (where `line.strip() == ""`) before the
+    stream reaches the parser; otherwise blank logical lines are provided to
+    the parser and will be tokenized/normalized/validated according to the
+    configured `strip`, `normalize_columns`, and strict validation flags.
   - Raises: file errors, decoding errors, and `SplurgeDsvColumnMismatchError`
     when strict validation flags are set and violated.
 
@@ -240,6 +248,10 @@ Selected public classmethods:
 - `parse_file(file_path, *, delimiter: str, encoding: str = 'utf-8', skip_header_rows: int = 0, skip_footer_rows: int = 0, normalize_columns: int | None = None, detect_columns: bool = False, raise_on_missing_columns: bool = False, raise_on_extra_columns: bool = False, strip: bool = True, bookend: str | None = None) -> list[list[str]]`
   - Read file to memory and parse. Path validation and file I/O errors are
     mapped to package exceptions.
+  - Note: callers can control blank-line handling by passing
+    `skip_empty_lines` (bool) which is forwarded to the underlying
+    `SafeTextFileReader` and will cause raw blank logical lines to be
+    filtered before parsing when True.
 
 - `parse_file_stream(file_path, *, delimiter: str, encoding: str = 'utf-8', chunk_size: int = DsvHelper.DEFAULT_CHUNK_SIZE, normalize_columns: int | None = None, detect_columns: bool = False, max_detect_chunks: int = DsvHelper.MAX_DETECT_CHUNKS, raise_on_missing_columns: bool = False, raise_on_extra_columns: bool = False, strip: bool = True, bookend: str | None = None) -> Iterator[list[list[str]]]`
   - Preferred streaming API. Behavior mirrors `Dsv.parse_file_stream`.
@@ -289,6 +301,10 @@ Low-level file reading, newline normalization, and secure path handling are
 provided by the `splurge-safe-io` dependency. The library uses:
 
 - `SafeTextFileReader` for robust file reads and decoding
+  - `SafeTextFileReader` for robust file reads and decoding. Note: the
+    reader supports a `skip_empty_lines` option which, when enabled, will
+    remove logical blank lines (where `line.strip() == ""`) after
+    header/footer trimming and before the parser receives the lines.
 - `SafeTextFileWriter` for robust writes
 - `PathValidator` for secure path checks
 
@@ -345,6 +361,11 @@ Primary command-line options / flags (long + short forms when available):
   - When set, rows with more fields than the expected width raise
     `SplurgeDsvColumnMismatchError`.
 
+- `--skip-empty-lines`
+  - When set, raw blank logical lines (where `line.strip() == ""`) are
+    skipped before parsing. This is forwarded to the underlying
+    `SafeTextFileReader` and affects both streaming and non-streaming modes.
+
 - `--max-detect-chunks N`
   - When detection is enabled, the maximum number of initial chunks to
     inspect while searching for the first non-blank logical row. Smaller
@@ -400,6 +421,7 @@ bookend: '"'
 encoding: utf-8
 skip_header_rows: 1
 skip_footer_rows: 0
+skip_empty_lines: false
 detect_columns: true
 chunk_size: 500
 max_detect_chunks: 5

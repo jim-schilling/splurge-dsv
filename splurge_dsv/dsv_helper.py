@@ -310,6 +310,7 @@ class DsvHelper:
         encoding: str = DEFAULT_ENCODING,
         skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
         skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
+        skip_empty_lines: bool = False,
         normalize_columns: int = 0,
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
@@ -359,6 +360,7 @@ class DsvHelper:
                 skip_header_lines=skip_header_rows,
                 skip_footer_lines=skip_footer_rows,
                 strip=strip,
+                skip_empty_lines=skip_empty_lines,
             )
             lines: list[str] = reader.read()
 
@@ -451,6 +453,7 @@ class DsvHelper:
         encoding: str = DEFAULT_ENCODING,
         skip_header_rows: int = DEFAULT_SKIP_HEADER_ROWS,
         skip_footer_rows: int = DEFAULT_SKIP_FOOTER_ROWS,
+        skip_empty_lines: bool = False,
         normalize_columns: int = 0,
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
@@ -516,6 +519,7 @@ class DsvHelper:
                 skip_header_lines=skip_header_rows,
                 skip_footer_lines=skip_footer_rows,
                 strip=strip,
+                skip_empty_lines=skip_empty_lines,
                 chunk_size=chunk_size,
             )
             stream_iter = reader.read_as_stream()
