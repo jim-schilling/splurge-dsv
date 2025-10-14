@@ -362,7 +362,7 @@ class DsvHelper:
                 strip=strip,
                 skip_empty_lines=skip_empty_lines,
             )
-            lines: list[str] = reader.read()
+            lines: list[str] = reader.readlines()
 
         except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
             raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
@@ -522,7 +522,7 @@ class DsvHelper:
                 skip_empty_lines=skip_empty_lines,
                 chunk_size=chunk_size,
             )
-            stream_iter = reader.read_as_stream()
+            stream_iter = reader.readlines_as_stream()
 
             if detect_columns and (not normalize_columns or normalize_columns <= 0):
                 # Buffer up to `max_detect_chunks` from the stream while

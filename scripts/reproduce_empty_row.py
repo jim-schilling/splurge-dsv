@@ -56,7 +56,7 @@ def run_reproducer() -> None:
     empty_rows = 0
     total_read = 0
 
-    for chunk_index, chunk in enumerate(reader.read_as_stream(), start=1):
+    for chunk_index, chunk in enumerate(reader.readlines_as_stream(), start=1):
         for line_index, line in enumerate(chunk, start=1):
             total_read += 1
             expected = f"{expected_n},Item{expected_n},Value{expected_n},Description for item {expected_n}"

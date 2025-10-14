@@ -174,7 +174,7 @@ class TestCrossPlatformCompatibility:
         crlf_file.write_bytes(crlf_data.encode("utf-8"))
 
         reader = SafeTextFileReader(Path(crlf_file))
-        crlf_lines = list(reader.read_as_stream())
+        crlf_lines = list(reader.readlines_as_stream())
         # Flatten chunks to get individual lines
         crlf_lines_flat = [line for chunk in crlf_lines for line in chunk]
         assert len(crlf_lines_flat) == 3
@@ -185,7 +185,7 @@ class TestCrossPlatformCompatibility:
         lf_file = tmp_path / "lf_stream.csv"
         lf_file.write_text(lf_data, encoding="utf-8")
         reader = SafeTextFileReader(Path(lf_file))
-        lf_lines = list(reader.read_as_stream())
+        lf_lines = list(reader.readlines_as_stream())
         # Flatten chunks to get individual lines
         lf_lines_flat = [line for chunk in lf_lines for line in chunk]
         assert len(lf_lines_flat) == 3
