@@ -136,7 +136,7 @@ class DsvConfig:
 Key fields and behavior:
 
 - `delimiter` (str): required field delimiter like "," or "\t". Must be a
-  non-empty string; an empty delimiter raises `SplurgeDsvParameterError`.
+  non-empty string; an empty delimiter raises `SplurgeDsvValueError`.
 - `strip` (bool): whether tokens are stripped (default True).
 - `bookend` (str|None): optional quoting character, e.g. `"` or `'`.
 - `bookend_strip` (bool): whether to strip whitespace after removing bookends.
@@ -157,7 +157,7 @@ Key fields and behavior:
 
 Validation:
 
-- Construction or helper entrypoints will raise `SplurgeDsvParameterError`
+- Construction or helper entrypoints will raise `SplurgeDsvValueError`
   for invalid configuration (for example empty `delimiter`, `chunk_size`
   below minimum, or negative skip counts).
 
@@ -192,7 +192,7 @@ Public methods (signatures and descriptions):
     or 0 the row is returned as parsed; if a positive int is passed, the
     returned row will be padded with empty strings or truncated to match the
     length.
-  - Raises: `SplurgeDsvParameterError` for invalid args, `SplurgeDsvParsingError`
+  - Raises: `SplurgeDsvValueError` for invalid args, `SplurgeDsvRuntimeError`
     for tokenization errors.
 
 - `parses(self, content: list[str], *, detect_columns: bool = False, normalize_columns: int | None = None) -> list[list[str]]`
@@ -237,8 +237,8 @@ Selected public classmethods:
   - Parse a single logical record string and return list[str]. Supports
     optional normalization and strict validation flags. Preserves empty
     tokens and handles bookend removal when provided.
-  - Raises: `SplurgeDsvParameterError` for invalid args or
-    `SplurgeDsvParsingError` for tokenization issues.
+  - Raises: `SplurgeDsvValueError` for invalid args, `SplurgeDsvRuntimeError`
+    for tokenization issues.
 
 - `parses(content: Iterable[str], *, delimiter: str, detect_columns: bool = False, normalize_columns: int | None = None, raise_on_missing_columns: bool = False, raise_on_extra_columns: bool = False, strip: bool = True, bookend: str | None = None) -> list[list[str]]`
   - Parse multiple logical records. If `detect_columns=True` and
@@ -263,9 +263,9 @@ Selected public classmethods:
 
 Error mapping:
 
-- File and path validation errors are mapped to `SplurgeDsvFile*` and
+- File and path validation errors are mapped to `SplurgeDsvOSError` and
   `SplurgeDsvPathValidationError` exceptions.
-- Tokenization or parsing problems raise `SplurgeDsvParsingError`.
+- Tokenization or parsing problems raise `SplurgeDsvRuntimeError`.
 - Column mismatch conditions raise `SplurgeDsvColumnMismatchError` when the
   corresponding strict flags are set.
 
@@ -342,7 +342,7 @@ Primary command-line options / flags (long + short forms when available):
 - `--chunk-size N` / `-c N`
   - Number of logical rows per chunk in streaming mode. Must be >= the
     internal minimum; invalid values cause the CLI to fail with a
-    `SplurgeDsvParameterError`.
+    `SplurgeDsvValueError`.
 
 - `--detect-normalize-columns` (boolean flag)
   - When used without an explicit `--normalize-columns`, enables automatic
@@ -453,43 +453,103 @@ cfg = DsvConfig.from_file('config.yaml')
 ## Exceptions
 
 All package exceptions are defined in `splurge_dsv.exceptions` and re-exported
-from the package root for convenience. They follow a small, practical
-hierarchy so callers can catch broad or narrow categories.
+from the package root for convenience. They inherit from `SplurgeDsvError`
+which inherits from `SplurgeFrameworkError` (from the `splurge-exceptions`
+library). This provides a clear, practical hierarchy so callers can catch
+broad or narrow categories of errors.
 
-Hierarchy and descriptions (top-down):
+Hierarchy and descriptions:
 
-- `SplurgeDsvError` (base class for all package exceptions)
+- `SplurgeDsvError` (base class for all package exceptions; inherits from `SplurgeFrameworkError`)
 
-- `SplurgeDsvValidationError` (invalid user input / parameters)
-  - `SplurgeDsvParameterError` — invalid numeric/string parameter values
+  - `SplurgeDsvTypeError` — raised when a value has the wrong type
+    - Example: passing a non-list to `parses()` when a list is required
 
-- `SplurgeDsvFileOperationError` (file-related problems)
-  - `SplurgeDsvFileNotFoundError` — file does not exist
-  - `SplurgeDsvFileExistsError` — attempted to create an already-existing file
-  - `SplurgeDsvFilePermissionError` — permission denied
-  - `SplurgeDsvFileDecodingError` — decoding (encoding mismatch) failures
-  - `SplurgeDsvFileEncodingError` — errors when writing/encoding output
+  - `SplurgeDsvValueError` — raised when a value has the right type but inappropriate content
+    - Example: empty delimiter string
+    - Example: negative chunk size
 
-- `SplurgeDsvPathValidationError` — path validation failed (mapped from
-  `splurge-safe-io` path validator exceptions)
+  - `SplurgeDsvLookupError` — raised for encoding/decoding errors
+    - Maps from `SplurgeSafeIoLookupError` when file decoding fails
+    - Example: incorrect file encoding specified
 
-- `SplurgeDsvDataProcessingError` (processing / runtime errors)
-  - `SplurgeDsvParsingError` — tokenization and parsing failures
-  - `SplurgeDsvColumnMismatchError` — row column count mismatch when strict
-    validation is enabled (raised when `raise_on_missing_columns` or
-    `raise_on_extra_columns` is set and violated)
-  - `SplurgeDsvTypeConversionError` — errors converting types while post-processing
-  - `SplurgeDsvStreamingError` — streaming-specific runtime errors
+  - `SplurgeDsvOSError` — raised for file I/O and OS-related errors
+    - Maps from `SplurgeSafeIoOSError` for file not found, permission denied, and other OS failures
+    - Example: attempting to parse a non-existent file
+    - Example: permission denied when reading a file
 
-- `SplurgeDsvResourceError` / `SplurgeDsvResourceAcquisitionError` /
-  `SplurgeDsvResourceReleaseError` — resource acquisition/release failures
+  - `SplurgeDsvRuntimeError` — raised for general runtime errors not covered by other categories
+    - Maps from `SplurgeSafeIoRuntimeError` for unexpected runtime issues
+    - Example: unexpected errors during file streaming
 
-Guidance:
+  - `SplurgeDsvPathValidationError` — raised when a filesystem path fails validation checks
+    - Maps from `SplurgeSafeIoPathValidationError`
+    - Example: path traversal attempts or dangerous characters detected
 
-- Prefer catching specific exceptions (for example
-  `SplurgeDsvColumnMismatchError`) when you want a particular recovery
-  behavior. Use `SplurgeDsvError` only when you have generic fallback/error
-  reporting logic.
+  - `SplurgeDsvDataProcessingError` — base exception for data processing errors (parsing, conversion)
+    - `SplurgeDsvColumnMismatchError` — raised when row column count doesn't match expected
+      - Only raised when strict validation flags are enabled
+      - Example: row has 5 columns but expected 4, and `raise_on_extra_columns=True`
+
+Error mapping from `splurge-safe-io`:
+
+The library maps exceptions from the underlying `splurge-safe-io` dependency
+into the `SplurgeDsv*` exception hierarchy:
+
+- `SplurgeSafeIoLookupError` → `SplurgeDsvLookupError` (encoding/decoding issues)
+- `SplurgeSafeIoOSError` → `SplurgeDsvOSError` (file not found, permissions, etc.)
+- `SplurgeSafeIoPathValidationError` → `SplurgeDsvPathValidationError` (invalid paths)
+- `SplurgeSafeIoRuntimeError` → `SplurgeDsvRuntimeError` (other runtime errors)
+
+Usage guidance:
+
+- Prefer catching specific exceptions when you want targeted recovery behavior:
+  ```python
+  try:
+      rows = DsvHelper.parse_file("data.csv", delimiter=",")
+  except SplurgeDsvOSError:
+      print("File not found or not readable")
+  except SplurgeDsvLookupError:
+      print("Encoding error - try a different encoding")
+  ```
+
+- Use `SplurgeDsvError` as a catch-all only for generic error reporting:
+  ```python
+  try:
+      rows = DsvHelper.parse_file("data.csv", delimiter=",")
+  except SplurgeDsvError as e:
+      print(f"Failed to parse: {e}")
+  ```
+
+Migration from v2025.3.x:
+
+- In v2025.3.x and earlier, the library exposed many specialized exception classes:
+  - `SplurgeDsvFileNotFoundError`, `SplurgeDsvFilePermissionError`, etc.
+- In v2025.4.0+, these have been consolidated into the new hierarchy:
+  - `SplurgeDsvFileNotFoundError` → catch `SplurgeDsvOSError`
+  - `SplurgeDsvFilePermissionError` → catch `SplurgeDsvOSError`
+  - `SplurgeDsvFileDecodingError` → catch `SplurgeDsvLookupError`
+  - Other file operation errors → catch `SplurgeDsvOSError`
+
+Example migration:
+
+```python
+# Old code (v2025.3.x)
+try:
+    rows = DsvHelper.parse_file("data.csv", delimiter=",")
+except SplurgeDsvFileNotFoundError:
+    print("File not found")
+except SplurgeDsvFileDecodingError:
+    print("Encoding error")
+
+# New code (v2025.4.0+)
+try:
+    rows = DsvHelper.parse_file("data.csv", delimiter=",")
+except SplurgeDsvOSError:
+    print("File not found or other OS error")
+except SplurgeDsvLookupError:
+    print("Encoding error")
+```
 
 ---
 

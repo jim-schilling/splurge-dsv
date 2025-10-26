@@ -4,7 +4,7 @@ import pytest
 
 from splurge_dsv.cli import run_cli
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvFileDecodingError
+from splurge_dsv.exceptions import SplurgeDsvLookupError
 
 
 def test_run_cli_file_not_found(monkeypatch, tmp_path, capsys, cli_args):
@@ -107,24 +107,21 @@ def test_parse_file_raises_decoding_error_monkeypatched(monkeypatch, tmp_path):
     p = tmp_path / "some.csv"
     p.write_text("a,b\n1,2\n")
 
-    # Build fake exception type and reader
-    class FakeDecodeError(Exception):
-        pass
+    from splurge_safe_io.exceptions import SplurgeSafeIoLookupError
 
     class FakeReader:
         def __init__(self, *args, **kwargs):
             pass
 
         def readlines(self):
-            raise FakeDecodeError("boom")
+            raise SplurgeSafeIoLookupError(message="Decoding error", error_code="decode-error")
 
     # Patch the reader and the exception name on the module
     import splurge_dsv.dsv_helper as dh
 
     monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader)
-    monkeypatch.setattr(dh.safe_io_text_file_reader, "SplurgeSafeIoFileDecodingError", FakeDecodeError)
 
-    with pytest.raises(SplurgeDsvFileDecodingError):
+    with pytest.raises(SplurgeDsvLookupError):
         DsvHelper.parse_file(p, delimiter=",")
 
 
@@ -132,22 +129,20 @@ def test_parse_file_stream_raises_decoding_error_monkeypatched(monkeypatch, tmp_
     p = tmp_path / "some2.csv"
     p.write_text("a,b\n1,2\n")
 
-    class FakeDecodeError(Exception):
-        pass
+    from splurge_safe_io.exceptions import SplurgeSafeIoLookupError
 
     class FakeReader2:
         def __init__(self, *args, **kwargs):
             pass
 
         def readlines_as_stream(self):
-            raise FakeDecodeError("boom stream")
+            raise SplurgeSafeIoLookupError(message="Decoding error in stream", error_code="decode-error")
 
     import splurge_dsv.dsv_helper as dh
 
     monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader2)
-    monkeypatch.setattr(dh.safe_io_text_file_reader, "SplurgeSafeIoFileDecodingError", FakeDecodeError)
 
-    with pytest.raises(SplurgeDsvFileDecodingError):
+    with pytest.raises(SplurgeDsvLookupError):
         # iterate to trigger the reader
         list(DsvHelper.parse_file_stream(p, delimiter=","))
 

@@ -24,7 +24,7 @@ from pathlib import Path
 
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import SplurgeDsvOSError, SplurgeDsvRuntimeError, SplurgeDsvTypeError, SplurgeDsvValueError
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ class DsvConfig:
         max_detect_chunks: Maximum number of chunks to scan for column detection
 
     Raises:
-        SplurgeDsvParameterError: If delimiter is empty, chunk_size is too
+        SplurgeDsvValueError: If delimiter is empty, chunk_size is too
             small, or skip counts are negative.
     """
 
@@ -77,18 +77,18 @@ class DsvConfig:
         Ensures required fields are present and numeric ranges are valid.
         """
         if not self.delimiter:
-            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvValueError("delimiter cannot be empty or None")
 
         if self.chunk_size < DsvHelper.DEFAULT_MIN_CHUNK_SIZE:
-            raise SplurgeDsvParameterError(
+            raise SplurgeDsvValueError(
                 f"chunk_size must be at least {DsvHelper.DEFAULT_MIN_CHUNK_SIZE}, got {self.chunk_size}"
             )
 
         if self.skip_header_rows < 0:
-            raise SplurgeDsvParameterError(f"skip_header_rows cannot be negative, got {self.skip_header_rows}")
+            raise SplurgeDsvValueError(f"skip_header_rows cannot be negative, got {self.skip_header_rows}")
 
         if self.skip_footer_rows < 0:
-            raise SplurgeDsvParameterError(f"skip_footer_rows cannot be negative, got {self.skip_footer_rows}")
+            raise SplurgeDsvValueError(f"skip_footer_rows cannot be negative, got {self.skip_footer_rows}")
 
     @classmethod
     def csv(cls, **overrides) -> "DsvConfig":
@@ -166,26 +166,28 @@ class DsvConfig:
             DsvConfig: Configuration object built from the YAML file.
 
         Raises:
-            SplurgeDsvParameterError: If the file cannot be read, parsed,
-                or does not contain a mapping at the top level.
+            SplurgeDsvOSError: If the file cannot be found.
+            SplurgeDsvRuntimeError: If there are issues reading or parsing the file.
+            SplurgeDsvTypeError: If the top-level YAML structure is not a mapping/dictionary.
+            SplurgeDsvValueError: If the `delimiter` option is missing from the file.
         """
         try:
             import yaml  # type: ignore
         except Exception as e:  # pragma: no cover - dependency issues surfaced elsewhere
-            raise SplurgeDsvParameterError(f"PyYAML is required to load config files: {e}") from e
+            raise SplurgeDsvRuntimeError(f"PyYAML is required to load config files: {e}") from e
 
         p = Path(file_path)
         if not p.exists():
-            raise SplurgeDsvParameterError(f"Config file '{file_path}' not found")
+            raise SplurgeDsvOSError(f"Config file '{file_path}' not found")
 
         try:
             with p.open("r", encoding="utf-8") as fh:
                 data = yaml.safe_load(fh) or {}
         except Exception as e:
-            raise SplurgeDsvParameterError(f"Failed to read or parse config file '{file_path}': {e}") from e
+            raise SplurgeDsvRuntimeError(f"Failed to read or parse config file '{file_path}': {e}") from e
 
         if not isinstance(data, dict):
-            raise SplurgeDsvParameterError("Config file must contain a top-level mapping/dictionary of options")
+            raise SplurgeDsvTypeError("Config file must contain a top-level mapping/dictionary of options")
 
         # Filter and construct via existing from_params helper
         valid_fields = {f.name for f in fields(cls)}
@@ -193,7 +195,7 @@ class DsvConfig:
 
         # Ensure required values are present in the config (delimiter is required)
         if "delimiter" not in filtered:
-            raise SplurgeDsvParameterError("Config file must include the required 'delimiter' option")
+            raise SplurgeDsvValueError("Config file must include the required 'delimiter' option")
 
         return cls.from_params(**filtered)
 
@@ -232,7 +234,7 @@ class Dsv:
             List of parsed tokens as strings.
 
         Raises:
-            SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvValueError: If the configured delimiter is invalid.
             SplurgeDsvColumnMismatchError: If column validation fails.
         """
         return DsvHelper.parse(
@@ -257,7 +259,8 @@ class Dsv:
             List of lists of parsed strings
 
         Raises:
-            SplurgeDsvParameterError: If the configured delimiter is invalid.
+            SplurgeDsvValueError: If the configured delimiter is invalid.
+            SplurgeDsvTypeError: If the input is not a list of strings.
             SplurgeDsvColumnMismatchError: If column validation fails.
 
         Example:
@@ -288,12 +291,13 @@ class Dsv:
 
         Raises:
             SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvFileNotFoundError: If the file cannot be found.
-            SplurgeDsvFilePermissionError: If the file cannot be read.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvOSError: If the file cannot be found.
+            SplurgeDsvOSError: If the file cannot be read.
+            SplurgeDsvLookupError: If the file cannot be decoded with the configured encoding.
             SplurgeDsvColumnMismatchError: If column validation fails.
-            SplurgeDsvParameterError: If the configured delimiter is invalid.
-            SplurgeDsvError: For other unexpected errors.
+            SplurgeDsvValueError: If the configured delimiter is invalid.
+            SplurgeDsvTypeError: If the input is not a list of strings.
+            SplurgeDsvRuntimeError: For other runtime errors.
         """
         return DsvHelper.parse_file(
             file_path,
@@ -325,12 +329,13 @@ class Dsv:
 
         Raises:
             SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvFileNotFoundError: If the file cannot be found.
-            SplurgeDsvFilePermissionError: If the file cannot be read.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvOSError: If the file cannot be found.
+            SplurgeDsvOSError: If the file cannot be read.
+            SplurgeDsvLookupError: If the file cannot be decoded with the configured encoding.
             SplurgeDsvColumnMismatchError: If column validation fails.
-            SplurgeDsvParameterError: If the configured delimiter is invalid.
-            SplurgeDsvError: For other unexpected errors.
+            SplurgeDsvValueError: If the configured delimiter is invalid.
+            SplurgeDsvTypeError: If the input is not a list of strings.
+            SplurgeDsvRuntimeError: For other unexpected errors.
         """
         return DsvHelper.parse_file_stream(
             file_path,

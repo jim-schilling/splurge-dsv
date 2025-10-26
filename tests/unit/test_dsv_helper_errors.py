@@ -9,9 +9,8 @@ import pytest
 
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
-    SplurgeDsvFileDecodingError,
-    SplurgeDsvFileNotFoundError,
-    SplurgeDsvFilePermissionError,
+    SplurgeDsvLookupError,
+    SplurgeDsvOSError,
 )
 
 
@@ -19,7 +18,7 @@ def test_parse_file_nonexistent_raises(tmp_path) -> None:
     missing = tmp_path / "nope.csv"
     assert not missing.exists()
 
-    with pytest.raises(SplurgeDsvFileNotFoundError):
+    with pytest.raises(SplurgeDsvOSError):
         DsvHelper.parse_file(missing, delimiter=",")
 
 
@@ -28,22 +27,20 @@ def test_parse_file_decoding_error_monkeypatched(monkeypatch, tmp_path) -> None:
     p = tmp_path / "some.csv"
     p.write_text("a,b\n1,2\n")
 
-    class FakeDecodeError(Exception):
-        pass
+    from splurge_safe_io.exceptions import SplurgeSafeIoLookupError
 
     class FakeReader:
         def __init__(self, *args, **kwargs):
             pass
 
         def readlines(self):
-            raise FakeDecodeError("boom")
+            raise SplurgeSafeIoLookupError(message="Decoding error", error_code="decode-error")
 
     import splurge_dsv.dsv_helper as dh
 
     monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader)
-    monkeypatch.setattr(dh.safe_io_text_file_reader, "SplurgeSafeIoFileDecodingError", FakeDecodeError)
 
-    with pytest.raises(SplurgeDsvFileDecodingError):
+    with pytest.raises(SplurgeDsvLookupError):
         DsvHelper.parse_file(p, delimiter=",")
 
 
@@ -51,22 +48,20 @@ def test_parse_file_stream_decoding_error_monkeypatched(monkeypatch, tmp_path) -
     p = tmp_path / "stream.csv"
     p.write_text("a,b\n1,2\n")
 
-    class FakeDecodeError(Exception):
-        pass
+    from splurge_safe_io.exceptions import SplurgeSafeIoLookupError
 
     class FakeReader2:
         def __init__(self, *args, **kwargs):
             pass
 
         def readlines_as_stream(self):
-            raise FakeDecodeError("boom stream")
+            raise SplurgeSafeIoLookupError(message="Decoding error in stream", error_code="decode-error")
 
     import splurge_dsv.dsv_helper as dh
 
     monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader2)
-    monkeypatch.setattr(dh.safe_io_text_file_reader, "SplurgeSafeIoFileDecodingError", FakeDecodeError)
 
-    with pytest.raises(SplurgeDsvFileDecodingError):
+    with pytest.raises(SplurgeDsvLookupError):
         list(DsvHelper.parse_file_stream(p, delimiter=","))
 
 
@@ -74,20 +69,18 @@ def test_parse_file_permission_error_monkeypatched(monkeypatch, tmp_path) -> Non
     p = tmp_path / "perm.csv"
     p.write_text("a,b\n1,2\n")
 
-    class FakePermError(Exception):
-        pass
+    from splurge_safe_io.exceptions import SplurgeSafeIoOSError
 
     class FakeReader3:
         def __init__(self, *args, **kwargs):
             pass
 
         def readlines(self):
-            raise FakePermError("no access")
+            raise SplurgeSafeIoOSError(message="Permission denied", error_code="permission-error")
 
     import splurge_dsv.dsv_helper as dh
 
     monkeypatch.setattr(dh.safe_io_text_file_reader, "SafeTextFileReader", FakeReader3)
-    monkeypatch.setattr(dh.safe_io_text_file_reader, "SplurgeSafeIoFilePermissionError", FakePermError)
 
-    with pytest.raises(SplurgeDsvFilePermissionError):
+    with pytest.raises(SplurgeDsvOSError):
         DsvHelper.parse_file(p, delimiter=",")

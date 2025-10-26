@@ -12,7 +12,11 @@ import pytest
 
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvColumnMismatchError, SplurgeDsvParameterError
+from splurge_dsv.exceptions import (
+    SplurgeDsvColumnMismatchError,
+    SplurgeDsvTypeError,
+    SplurgeDsvValueError,
+)
 
 
 class TestDsvHelperParse:
@@ -99,12 +103,12 @@ class TestDsvHelperParse:
 
     def test_parse_with_empty_delimiter_raises_error(self) -> None:
         """Test that empty delimiter raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             DsvHelper.parse("a,b,c", delimiter="")
 
     def test_parse_with_none_delimiter_raises_error(self) -> None:
         """Test that None delimiter raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             DsvHelper.parse("a,b,c", delimiter=None)
 
 
@@ -164,22 +168,22 @@ class TestDsvHelperParses:
 
     def test_parses_with_empty_delimiter_raises_error(self) -> None:
         """Test that empty delimiter raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             DsvHelper.parses(["a,b,c"], delimiter="")
 
     def test_parses_with_none_delimiter_raises_error(self) -> None:
         """Test that None delimiter raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             DsvHelper.parses(["a,b,c"], delimiter=None)
 
     def test_parses_with_non_string_content_raises_error(self) -> None:
         """Test that non-string content raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="content must be a list of strings"):
+        with pytest.raises(SplurgeDsvTypeError, match="content must be a list of strings"):
             DsvHelper.parses(["a,b,c", 123], delimiter=",")
 
     def test_parses_with_non_list_content_raises_error(self) -> None:
         """Test that non-list content raises error."""
-        with pytest.raises(SplurgeDsvParameterError, match="content must be a list"):
+        with pytest.raises(SplurgeDsvTypeError, match="content must be a list"):
             DsvHelper.parses("a,b,c", delimiter=",")
 
 

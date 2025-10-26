@@ -47,31 +47,18 @@ from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
     SplurgeDsvColumnMismatchError,
-    SplurgeDsvConfigurationError,
     SplurgeDsvDataProcessingError,
-    # canonical SplurgeDsv* exception names
     SplurgeDsvError,
-    SplurgeDsvFileEncodingError,
-    SplurgeDsvFileExistsError,
-    SplurgeDsvFileNotFoundError,
-    SplurgeDsvFileOperationError,
-    SplurgeDsvFilePermissionError,
-    SplurgeDsvFormatError,
-    SplurgeDsvParameterError,
-    SplurgeDsvParsingError,
+    SplurgeDsvLookupError,
+    SplurgeDsvOSError,
     SplurgeDsvPathValidationError,
-    SplurgeDsvPerformanceWarning,
-    SplurgeDsvRangeError,
-    SplurgeDsvResourceAcquisitionError,
-    SplurgeDsvResourceError,
-    SplurgeDsvResourceReleaseError,
-    SplurgeDsvStreamingError,
-    SplurgeDsvTypeConversionError,
-    SplurgeDsvValidationError,
+    SplurgeDsvRuntimeError,
+    SplurgeDsvTypeError,
+    SplurgeDsvValueError,
 )
 from splurge_dsv.string_tokenizer import StringTokenizer
 
-__version__ = "2025.3.2"
+__version__ = "2025.4.0"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
@@ -81,27 +68,15 @@ __all__ = [
     "DsvConfig",
     "DsvHelper",
     # Exceptions
-    "SplurgeDsvError",
-    "SplurgeDsvValidationError",
-    "SplurgeDsvFileOperationError",
-    "SplurgeDsvFileNotFoundError",
-    "SplurgeDsvFilePermissionError",
-    "SplurgeDsvFileEncodingError",
-    "SplurgeDsvPathValidationError",
-    "SplurgeDsvDataProcessingError",
-    "SplurgeDsvParsingError",
     "SplurgeDsvColumnMismatchError",
-    "SplurgeDsvTypeConversionError",
-    "SplurgeDsvStreamingError",
-    "SplurgeDsvConfigurationError",
-    "SplurgeDsvResourceError",
-    "SplurgeDsvResourceAcquisitionError",
-    "SplurgeDsvResourceReleaseError",
-    "SplurgeDsvPerformanceWarning",
-    "SplurgeDsvParameterError",
-    "SplurgeDsvRangeError",
-    "SplurgeDsvFormatError",
-    "SplurgeDsvFileExistsError",
+    "SplurgeDsvDataProcessingError",
+    "SplurgeDsvError",
+    "SplurgeDsvPathValidationError",
+    "SplurgeDsvValueError",
+    "SplurgeDsvTypeError",
+    "SplurgeDsvOSError",
+    "SplurgeDsvLookupError",
+    "SplurgeDsvRuntimeError",
     # Utility classes
     "StringTokenizer",
 ]

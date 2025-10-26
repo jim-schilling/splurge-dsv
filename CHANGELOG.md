@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.4.0] - 2025-10-26
+### Added
+- Added `splurge-exceptions` v2025.1.0 as a dependency to standardize exception handling across Splurge libraries.
+- `SplurgeDsvError` exception was refactored to inherit from `SplurgeFrameworkException` class from `splurge-exceptions`.
+
+### Refactored/Added
+- `SplurgeDsv*` exceptions include:
+  - `SplurgeDsvError`: Base exception for all splurge-dsv errors, inheriting from `SplurgeFrameworkException`.
+  - `SplurgeDsvOSError`: For OS-related errors.
+  - `SplurgeDsvValueError`: For invalid value errors.
+  - `SplurgeDsvTypeError`: For type-related errors.
+  - `SplurgeDsvLookupError`: For lookup failures.
+  - `SplurgeDsvRuntimeError`: For runtime errors.
+  - `SplurgeDsvPathValidationError`: For path validation issues.
+  - `SplurgeDsvDataProcessingError`: For data processing errors.
+  - `SplurgeDsvColumnMismatchError`: For column count mismatches in rows.
+
+### Removed
+- Removed custom exception handling logic in favor of standardized exceptions from `splurge-exceptions`.
+- Removed deprecated exceptions that are now covered by `splurge-exceptions`.
+
+### Updated
+- Updated pyproject.toml to include `splurge-exceptions` v2025.1.0 as a dependency.
+- Updated pyproject.toml to latest versions of other dependencies.
+- Updated documentation to reflect new exception hierarchy and usage.
+- Bumped version to 2025.4.0.
+
 ## [2025.3.2] - 2025-10-14
 ### Updated
 - Updated test mocks to use `readlines()` instead of deprecated `read()` method, ensuring compatibility with `splurge-safe-io` updates.
