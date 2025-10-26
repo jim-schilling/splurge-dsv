@@ -16,16 +16,23 @@ from pathlib import Path
 import splurge_safe_io.constants as safe_io_constants
 import splurge_safe_io.path_validator as safe_io_path_validator
 import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader
+from splurge_safe_io.exceptions import (
+    SplurgeSafeIoLookupError,
+    SplurgeSafeIoOSError,
+    SplurgeSafeIoPathValidationError,
+    SplurgeSafeIoRuntimeError,
+)
 
 # Local imports
 from splurge_dsv.exceptions import (
     SplurgeDsvColumnMismatchError,
     SplurgeDsvError,
-    SplurgeDsvFileDecodingError,
-    SplurgeDsvFileNotFoundError,
-    SplurgeDsvFilePermissionError,
-    SplurgeDsvParameterError,
+    SplurgeDsvLookupError,
+    SplurgeDsvOSError,
     SplurgeDsvPathValidationError,
+    SplurgeDsvRuntimeError,
+    SplurgeDsvTypeError,
+    SplurgeDsvValueError,
 )
 from splurge_dsv.string_tokenizer import StringTokenizer
 
@@ -86,8 +93,8 @@ class DsvHelper:
             A list of parsed token strings.
 
         Raises:
-            SplurgeDsvParameterError: If ``delimiter`` is empty or None.
-            SplurgeDsvParameterError: If ``normalize_columns`` is negative.
+            SplurgeDsvValueError: If ``delimiter`` is empty or None.
+            SplurgeDsvValueError: If ``normalize_columns`` is negative.
             SplurgeDsvColumnMismatchError: If column validation fails.
 
         Examples:
@@ -97,7 +104,11 @@ class DsvHelper:
             ['a', 'b', 'c']
         """
         if delimiter is None or delimiter == "":
-            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvValueError(
+                message="delimiter cannot be empty or None",
+                error_code="invalid-argument-value-or-type",
+                details={"delimiter": delimiter},
+            )
 
         tokens: list[str] = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
 
@@ -135,10 +146,14 @@ class DsvHelper:
             A new list of tokens with length == expected_columns.
 
         Raises:
-            SplurgeDsvParameterError: If ``expected_columns`` is negative.
+            SplurgeDsvValueError: If ``expected_columns`` is negative.
         """
         if expected_columns < 0:
-            raise SplurgeDsvParameterError("expected_columns must be non-negative")
+            raise SplurgeDsvValueError(
+                message="expected_columns must be non-negative",
+                error_code="invalid-argument-value",
+                details={"expected_columns": expected_columns},
+            )
 
         current = len(row)
         if current == expected_columns:
@@ -166,16 +181,35 @@ class DsvHelper:
 
         Raises:
             SplurgeDsvColumnMismatchError: If column validation fails.
-            SplurgeDsvParameterError: If ``expected_columns`` is negative.
+            SplurgeDsvValueError: If ``expected_columns`` is negative.
         """
+        if actual_columns < 0:
+            raise SplurgeDsvValueError(
+                message="actual_columns must be non-negative",
+                error_code="invalid-argument-value",
+                details={"actual_columns": actual_columns},
+            )
+
         if expected_columns < 0:
-            raise SplurgeDsvParameterError("expected_columns must be non-negative")
+            raise SplurgeDsvValueError(
+                message="expected_columns must be non-negative",
+                error_code="invalid-argument-value",
+                details={"expected_columns": expected_columns},
+            )
 
         if raise_on_missing_columns and actual_columns < expected_columns:
-            raise SplurgeDsvColumnMismatchError(f"Row is missing columns: ({actual_columns} < {expected_columns})")
+            raise SplurgeDsvColumnMismatchError(
+                message=f"Row has missing columns: ({actual_columns} < {expected_columns})",
+                error_code="missing-columns",
+                details={"actual_columns": actual_columns, "expected_columns": expected_columns},
+            )
 
         if raise_on_extra_columns and actual_columns > expected_columns:
-            raise SplurgeDsvColumnMismatchError(f"Row has extra columns: ({actual_columns} > {expected_columns})")
+            raise SplurgeDsvColumnMismatchError(
+                message=f"Row has extra columns: ({actual_columns} > {expected_columns})",
+                error_code="extra-columns",
+                details={"actual_columns": actual_columns, "expected_columns": expected_columns},
+            )
 
     @classmethod
     def parses(
@@ -212,8 +246,8 @@ class DsvHelper:
             A list of token lists, one per input line.
 
         Raises:
-            SplurgeDsvParameterError: If ``content`` is not a list of strings, or
-                if ``delimiter`` is empty or None, or if ``normalize_columns`` is negative.
+            SplurgeDsvTypeError: If ``content`` is not a list of strings.
+            SplurgeDsvValueError: If ``delimiter`` is empty or None, or if ``normalize_columns`` is negative.
             SplurgeDsvColumnMismatchError: If column validation fails.
 
         Example:
@@ -221,10 +255,10 @@ class DsvHelper:
             [['a', 'b', 'c'], ['d', 'e', 'f']]
         """
         if not isinstance(content, list):
-            raise SplurgeDsvParameterError("content must be a list")
+            raise SplurgeDsvTypeError(message="content must be a list", error_code="invalid-argument-type")
 
         if not all(isinstance(item, str) for item in content):
-            raise SplurgeDsvParameterError("content must be a list of strings")
+            raise SplurgeDsvTypeError(message="content must be a list of strings", error_code="invalid-argument-type")
 
         # If requested, detect expected columns from the first logical row
         if detect_columns and (not normalize_columns or normalize_columns <= 0):
@@ -279,22 +313,23 @@ class DsvHelper:
 
         Raises:
             SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvFileNotFoundError: If the file does not exist.
-            SplurgeDsvFilePermissionError: If the file cannot be accessed due to permission restrictions
-            SplurgeDsvError: For other unexpected errors.
+            SplurgeDsvOSError: If the file does not exist.
+            SplurgeDsvOSError: If the file cannot be accessed due to permission restrictions.
+            SplurgeDsvRuntimeError: For other errors.
         """
         try:
-            effective_path = safe_io_path_validator.PathValidator.validate_path(
+            effective_path = safe_io_path_validator.PathValidator.get_validated_path(
                 Path(file_path), must_exist=must_exist, must_be_file=must_be_file, must_be_readable=must_be_readable
             )
-        except safe_io_path_validator.SplurgeSafeIoPathValidationError as ex:
-            raise SplurgeDsvPathValidationError(f"Invalid file path: {file_path}") from ex
-        except safe_io_path_validator.SplurgeSafeIoFileNotFoundError as ex:
-            raise SplurgeDsvFileNotFoundError(f"File not found: {file_path}") from ex
-        except safe_io_path_validator.SplurgeSafeIoFilePermissionError as ex:
-            raise SplurgeDsvFilePermissionError(f"File permission error: {file_path}") from ex
-        except Exception as ex:
-            raise SplurgeDsvError(f"Unexpected error validating file path: {file_path}") from ex
+        except SplurgeSafeIoPathValidationError as ex:
+            # path validation errors are wrapped as PathValidationErrors in safe-io
+            raise SplurgeDsvPathValidationError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoOSError as ex:
+            # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
+            raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoRuntimeError as ex:
+            # other runtime errors are wrapped as RuntimeErrors in safe-io
+            raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
 
         return effective_path
 
@@ -340,13 +375,15 @@ class DsvHelper:
             A list of token lists (one list per non-skipped line).
 
         Raises:
-            SplurgeDsvParameterError: If ``delimiter`` is empty or None, or if ``normalize_columns`` is negative.
-            SplurgeDsvFileNotFoundError: If the file at ``file_path`` does not exist.
-            SplurgeDsvFilePermissionError: If the file cannot be accessed due to permission restrictions.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded using the provided ``encoding``.
+            SplurgeDsvValueError: If ``delimiter`` is empty or None, or if ``normalize_columns`` is negative.
+            SplurgeDsvTypeError: If the content is not a list of strings.
+            SplurgeDsvOSError: If the file at ``file_path`` does not exist.
+            SplurgeDsvOSError: If the file cannot be accessed due to permission restrictions.
+            SplurgeDsvOSError: If the file cannot be read.
+            SplurgeDsvLookupError: If the file cannot be decoded using the provided ``encoding``.
             SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvColumnMismatchError: If column validation fails.
-            SplurgeDsvError: For other unexpected errors.
+            SplurgeDsvRuntimeError: For other runtime errors.
         """
         effective_file_path = cls._validate_file_path(Path(file_path))
 
@@ -364,12 +401,18 @@ class DsvHelper:
             )
             lines: list[str] = reader.readlines()
 
-        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
-            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
-        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
-            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
-        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
-            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except SplurgeSafeIoPathValidationError as ex:
+            # path validation errors are wrapped as PathValidationErrors in safe-io
+            raise SplurgeDsvPathValidationError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoLookupError as ex:
+            # encoding/decoding errors are wrapped as LookupErrors in safe-io
+            raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoOSError as ex:
+            # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
+            raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoRuntimeError as ex:
+            # other runtime errors are wrapped as RuntimeErrors in safe-io
+            raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
         except Exception as ex:
             # If the exception is already a SplurgeDsvError (or subclass),
             # re-raise it unchanged so callers can handle specific errors
@@ -377,7 +420,7 @@ class DsvHelper:
             if isinstance(ex, SplurgeDsvError):
                 raise
 
-            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
+            raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
 
         return cls.parses(
             lines,
@@ -421,9 +464,9 @@ class DsvHelper:
             raise_on_extra_columns: If True, raise an error if a line has more columns than ``normalize_columns``.
 
         Raises:
-            SplurgeDsvParameterError: If ``delimiter`` is empty or None,
+            SplurgeDsvValueError: If ``delimiter`` is empty or None,
                 or if ``normalize_columns`` is negative,
-                or if ``chunk`` is not a list of strings, or if any element in ``chunk`` is not a string.
+            SplurgeDsvTypeError: If ``chunk`` is not a list of strings, or if any element in ``chunk`` is not a string.
             SplurgeDsvColumnMismatchError: If column validation fails.
 
         Returns:
@@ -490,13 +533,13 @@ class DsvHelper:
             list[list[str]]: Parsed rows for each chunk.
 
         Raises:
-            SplurgeDsvParameterError: If delimiter is empty or None, or if ``normalize_columns`` is negative,
-                or if ``chunk`` is not a list of strings, or if any element in ``chunk`` is not a string.
-            SplurgeDsvFileNotFoundError: If the file does not exist.
-            SplurgeDsvFilePermissionError: If the file cannot be accessed.
-            SplurgeDsvFileDecodingError: If the file cannot be decoded with the specified encoding.
+            SplurgeDsvValueError: If delimiter is empty or None, or if ``normalize_columns`` is negative.
+            SplurgeDsvTypeError: If ``chunk`` is not a list of strings, or if any element in ``chunk`` is not a string.
+            SplurgeDsvOSError: If the file does not exist.
+            SplurgeDsvOSError: If the file cannot be accessed.
+            SplurgeDsvOSError: If the file cannot be decoded with the specified encoding.
             SplurgeDsvPathValidationError: If the file path is invalid.
-            SplurgeDsvError: For other unexpected errors.
+            SplurgeDsvRuntimeError: For other runtime errors.
             SplurgeDsvColumnMismatchError: If column validation fails.
         """
 
@@ -614,12 +657,15 @@ class DsvHelper:
                     raise_on_missing_columns=raise_on_missing_columns,
                     raise_on_extra_columns=raise_on_extra_columns,
                 )
-        except safe_io_text_file_reader.SplurgeSafeIoFileDecodingError as ex:
-            raise SplurgeDsvFileDecodingError(f"File decoding error: {effective_file_path}") from ex
-        except safe_io_text_file_reader.SplurgeSafeIoFilePermissionError as ex:
-            raise SplurgeDsvFilePermissionError(f"File permission error: {effective_file_path}") from ex
-        except safe_io_text_file_reader.SplurgeSafeIoOsError as ex:
-            raise SplurgeDsvFilePermissionError(f"File access error: {effective_file_path}") from ex
+        except SplurgeSafeIoLookupError as ex:
+            # encoding/decoding errors are wrapped as LookupErrors in safe-io
+            raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoOSError as ex:
+            # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
+            raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoRuntimeError as ex:
+            # other runtime errors are wrapped as RuntimeErrors in safe-io
+            raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
         except Exception as ex:
             # Preserve and re-raise known SplurgeDsvError subclasses so
             # callers can handle specific errors (e.g. column mismatch) as
@@ -628,4 +674,4 @@ class DsvHelper:
             if isinstance(ex, SplurgeDsvError):
                 raise
 
-            raise SplurgeDsvError(f"Unexpected error reading file: {effective_file_path}") from ex
+            raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex

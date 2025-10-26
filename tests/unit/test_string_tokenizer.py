@@ -9,7 +9,7 @@ multiple string processing, and bookend removal.
 import pytest
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import SplurgeDsvValueError
 from splurge_dsv.string_tokenizer import StringTokenizer
 
 
@@ -87,13 +87,13 @@ class TestStringTokenizerParse:
         assert result == ["a", "", "", "b", "", "", "c"]
 
     def test_parsing_with_empty_delimiter_raises_error(self) -> None:
-        """Test that empty delimiter raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        """Test that empty delimiter raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             StringTokenizer.parse("a,b,c", delimiter="")
 
     def test_parsing_with_none_delimiter_raises_error(self) -> None:
-        """Test that None delimiter raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        """Test that None delimiter raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             StringTokenizer.parse("a,b,c", delimiter=None)
 
 
@@ -152,13 +152,13 @@ class TestStringTokenizerParses:
         assert result_tab == [["a|b|c"], ["d;e;f"], ["g", "h", "i"]]
 
     def test_parsing_with_empty_delimiter_raises_error(self) -> None:
-        """Test that empty delimiter raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        """Test that empty delimiter raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             StringTokenizer.parses(["a,b,c"], delimiter="")
 
     def test_parsing_with_none_delimiter_raises_error(self) -> None:
-        """Test that None delimiter raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty or None"):
+        """Test that None delimiter raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty or None"):
             StringTokenizer.parses(["a,b,c"], delimiter=None)
 
 
@@ -242,13 +242,13 @@ class TestStringTokenizerRemoveBookends:
         assert result == "   "
 
     def test_remove_with_empty_bookend_raises_error(self) -> None:
-        """Test that empty bookend raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="bookend cannot be empty or None"):
+        """Test that empty bookend raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="bookend cannot be empty or None"):
             StringTokenizer.remove_bookends("'hello'", bookend="")
 
     def test_remove_with_none_bookend_raises_error(self) -> None:
-        """Test that None bookend raises SplurgeDsvParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="bookend cannot be empty or None"):
+        """Test that None bookend raises SplurgeDsvValueError."""
+        with pytest.raises(SplurgeDsvValueError, match="bookend cannot be empty or None"):
             StringTokenizer.remove_bookends("'hello'", bookend=None)
 
     def test_remove_with_multiple_character_bookend(self) -> None:

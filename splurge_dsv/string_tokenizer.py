@@ -12,7 +12,7 @@ This module is licensed under the MIT License.
 """
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import SplurgeDsvValueError
 
 
 class StringTokenizer:
@@ -44,7 +44,7 @@ class StringTokenizer:
             A list of tokens. Empty tokens are preserved.
 
         Raises:
-            SplurgeDsvParameterError: If ``delimiter`` is empty or ``None``.
+            SplurgeDsvValueError: If ``delimiter`` is empty or ``None``.
 
         Examples:
             >>> StringTokenizer.parse("a,b,c", delimiter=",")
@@ -56,7 +56,7 @@ class StringTokenizer:
             return []
 
         if delimiter is None or delimiter == "":
-            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvValueError("delimiter cannot be empty or None")
 
         # If stripping is enabled and the input is only whitespace (or
         # empty), treat it as a single empty token rather than returning an
@@ -86,14 +86,14 @@ class StringTokenizer:
             input string.
 
         Raises:
-            SplurgeDsvParameterError: If ``delimiter`` is empty or ``None``.
+            SplurgeDsvValueError: If ``delimiter`` is empty or ``None``.
 
         Example:
             >>> StringTokenizer.parses(["a,b", "c,d"], delimiter=",")
             [['a', 'b'], ['c', 'd']]
         """
         if delimiter is None or delimiter == "":
-            raise SplurgeDsvParameterError("delimiter cannot be empty or None")
+            raise SplurgeDsvValueError("delimiter cannot be empty or None")
 
         return [cls.parse(text, delimiter=delimiter, strip=strip) for text in content]
 
@@ -116,14 +116,14 @@ class StringTokenizer:
             applicable.
 
         Raises:
-            SplurgeDsvParameterError: If ``bookend`` is empty or ``None``.
+            SplurgeDsvValueError: If ``bookend`` is empty or ``None``.
 
         Example:
             >>> StringTokenizer.remove_bookends("'hello'", bookend="'")
             'hello'
         """
         if bookend is None or bookend == "":
-            raise SplurgeDsvParameterError("bookend cannot be empty or None")
+            raise SplurgeDsvValueError("bookend cannot be empty or None")
 
         value: str = content.strip() if strip else content
         if value.startswith(bookend) and value.endswith(bookend) and len(value) > 2 * len(bookend) - 1:

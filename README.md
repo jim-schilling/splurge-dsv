@@ -26,6 +26,16 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Comprehensive Documentation**: In-depth API reference and usage examples
 - **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
+**⚠️ CHANGES in v2025.4.0**
+> - **Exception Hierarchy Refactored**: All exceptions now leverage the `splurge-exceptions` library with a unified hierarchy.
+>   - All exceptions inherit from `SplurgeDsvError(SplurgeFrameworkError)`.
+>   - Encoding/Decoding errors now map to `SplurgeDsvLookupError`.
+>   - File I/O errors map to `SplurgeDsvOSError`.
+>   - General runtime errors map to `SplurgeDsvRuntimeError`.
+>   - Parameter/type/value validation errors use `SplurgeDsvTypeError`, and `SplurgeDsvValueError`.
+>   - Removed: Many specialized `SplurgeDsv*Error` classes (e.g., `SplurgeDsvFileNotFoundError`, `SplurgeDsvFilePermissionError`) in favor of the unified hierarchy.
+>   - See [API-REFERENCE.md](docs/api/API-REFERENCE.md) for the complete exception hierarchy and migration guidance.
+
 **⚠️ CHANGES in v2025.3.2**
 > - **splurge-safe-io** dependency has been updated to v2025.0.6+.
 >   - This change improves compatibility and stability with the latest features of the `splurge-safe-io` package.

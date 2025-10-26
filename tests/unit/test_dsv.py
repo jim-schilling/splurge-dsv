@@ -19,7 +19,7 @@ import pytest
 # Local imports
 from splurge_dsv.dsv import Dsv, DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvParameterError
+from splurge_dsv.exceptions import SplurgeDsvValueError
 
 
 class TestDsvConfig:
@@ -66,22 +66,22 @@ class TestDsvConfig:
 
     def test_dsv_config_validation_empty_delimiter(self):
         """Test that empty delimiter raises ParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="delimiter cannot be empty"):
+        with pytest.raises(SplurgeDsvValueError, match="delimiter cannot be empty"):
             DsvConfig(delimiter="")
 
     def test_dsv_config_validation_chunk_size_too_small(self):
         """Test that chunk_size below minimum raises ParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="chunk_size must be at least 10, got 5"):
+        with pytest.raises(SplurgeDsvValueError, match="chunk_size must be at least 10, got 5"):
             DsvConfig(delimiter=",", chunk_size=5)
 
     def test_dsv_config_validation_negative_skip_header(self):
         """Test that negative skip_header_rows raises ParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="skip_header_rows cannot be negative"):
+        with pytest.raises(SplurgeDsvValueError, match="skip_header_rows cannot be negative"):
             DsvConfig(delimiter=",", skip_header_rows=-1)
 
     def test_dsv_config_validation_negative_skip_footer(self):
         """Test that negative skip_footer_rows raises ParameterError."""
-        with pytest.raises(SplurgeDsvParameterError, match="skip_footer_rows cannot be negative"):
+        with pytest.raises(SplurgeDsvValueError, match="skip_footer_rows cannot be negative"):
             DsvConfig(delimiter=",", skip_footer_rows=-1)
 
     def test_dsv_config_csv_factory(self):
