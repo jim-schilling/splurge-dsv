@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 
 # Local
-from splurge_dsv.cli import run_cli
+from .cli import run_cli
 
 if __name__ == "__main__":
     sys.exit(run_cli())

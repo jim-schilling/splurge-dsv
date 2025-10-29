@@ -23,8 +23,8 @@ from os import PathLike
 from pathlib import Path
 
 # Local imports
-from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvOSError, SplurgeDsvRuntimeError, SplurgeDsvTypeError, SplurgeDsvValueError
+from .dsv_helper import DsvHelper
+from .exceptions import SplurgeDsvOSError, SplurgeDsvRuntimeError, SplurgeDsvTypeError, SplurgeDsvValueError
 
 
 @dataclass(frozen=True)
@@ -293,7 +293,8 @@ class Dsv:
             SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvOSError: If the file cannot be found.
             SplurgeDsvOSError: If the file cannot be read.
-            SplurgeDsvLookupError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvLookupError: If the codecs initialization fails or codecs cannot be found.
+            SplurgeDsvUnicodeError: If the file cannot be decoded with the configured encoding.
             SplurgeDsvColumnMismatchError: If column validation fails.
             SplurgeDsvValueError: If the configured delimiter is invalid.
             SplurgeDsvTypeError: If the input is not a list of strings.
@@ -331,7 +332,8 @@ class Dsv:
             SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvOSError: If the file cannot be found.
             SplurgeDsvOSError: If the file cannot be read.
-            SplurgeDsvLookupError: If the file cannot be decoded with the configured encoding.
+            SplurgeDsvLookupError: If the codecs initialization fails or codecs cannot be found.
+            SplurgeDsvUnicodeError: If the file cannot be decoded with the configured encoding.
             SplurgeDsvColumnMismatchError: If column validation fails.
             SplurgeDsvValueError: If the configured delimiter is invalid.
             SplurgeDsvTypeError: If the input is not a list of strings.

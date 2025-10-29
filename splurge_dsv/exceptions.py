@@ -16,7 +16,7 @@ License: MIT
 Copyright (c) 2025 Jim Schilling
 """
 
-from splurge_exceptions import SplurgeFrameworkError
+from ._vendor.splurge_exceptions import SplurgeFrameworkError
 
 
 class SplurgeDsvError(SplurgeFrameworkError):
@@ -53,6 +53,16 @@ class SplurgeDsvLookupError(SplurgeDsvError):
     """
 
     _domain = "splurge-dsv.lookup"
+
+
+class SplurgeDsvUnicodeError(SplurgeDsvError):
+    """Raised for Unicode-related errors, such as encoding/decoding failures.
+
+    This exception indicates issues encountered during text encoding or
+    decoding operations.
+    """
+
+    _domain = "splurge-dsv.unicode"
 
 
 class SplurgeDsvOSError(SplurgeDsvError):

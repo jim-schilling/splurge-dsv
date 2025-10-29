@@ -13,18 +13,25 @@ from collections.abc import Iterator
 from os import PathLike
 from pathlib import Path
 
-import splurge_safe_io.constants as safe_io_constants
-import splurge_safe_io.path_validator as safe_io_path_validator
-import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader
-from splurge_safe_io.exceptions import (
+# Third-party imports (vendored)
+from ._vendor.splurge_safe_io.constants import (
+    DEFAULT_CHUNK_SIZE as safe_io_DEFAULT_CHUNK_SIZE,
+)
+from ._vendor.splurge_safe_io.constants import (
+    MIN_CHUNK_SIZE as safe_io_MIN_CHUNK_SIZE,
+)
+from ._vendor.splurge_safe_io.exceptions import (
     SplurgeSafeIoLookupError,
     SplurgeSafeIoOSError,
     SplurgeSafeIoPathValidationError,
     SplurgeSafeIoRuntimeError,
+    SplurgeSafeIoUnicodeError,
 )
+from ._vendor.splurge_safe_io.path_validator import PathValidator
+from ._vendor.splurge_safe_io.safe_text_file_reader import SafeTextFileReader
 
 # Local imports
-from splurge_dsv.exceptions import (
+from .exceptions import (
     SplurgeDsvColumnMismatchError,
     SplurgeDsvError,
     SplurgeDsvLookupError,
@@ -32,9 +39,10 @@ from splurge_dsv.exceptions import (
     SplurgeDsvPathValidationError,
     SplurgeDsvRuntimeError,
     SplurgeDsvTypeError,
+    SplurgeDsvUnicodeError,
     SplurgeDsvValueError,
 )
-from splurge_dsv.string_tokenizer import StringTokenizer
+from .string_tokenizer import StringTokenizer
 
 
 class DsvHelper:
@@ -45,7 +53,7 @@ class DsvHelper:
     Supports configurable delimiters, text bookends, and whitespace handling options.
     """
 
-    DEFAULT_CHUNK_SIZE = safe_io_constants.DEFAULT_CHUNK_SIZE
+    DEFAULT_CHUNK_SIZE = safe_io_DEFAULT_CHUNK_SIZE
     # When detecting normalize_columns across a stream, how many chunks to scan
     # before giving up. Scanning more chunks increases work but helps if the
     # first logical row starts later than the first chunk (e.g., many blank lines
@@ -54,7 +62,7 @@ class DsvHelper:
     DEFAULT_ENCODING = "utf-8"
     DEFAULT_SKIP_HEADER_ROWS = 0
     DEFAULT_SKIP_FOOTER_ROWS = 0
-    DEFAULT_MIN_CHUNK_SIZE = safe_io_constants.MIN_CHUNK_SIZE
+    DEFAULT_MIN_CHUNK_SIZE = safe_io_MIN_CHUNK_SIZE
     DEFAULT_STRIP = True
     DEFAULT_BOOKEND_STRIP = True
 
@@ -318,7 +326,7 @@ class DsvHelper:
             SplurgeDsvRuntimeError: For other errors.
         """
         try:
-            effective_path = safe_io_path_validator.PathValidator.get_validated_path(
+            effective_path = PathValidator.get_validated_path(
                 Path(file_path), must_exist=must_exist, must_be_file=must_be_file, must_be_readable=must_be_readable
             )
         except SplurgeSafeIoPathValidationError as ex:
@@ -380,7 +388,8 @@ class DsvHelper:
             SplurgeDsvOSError: If the file at ``file_path`` does not exist.
             SplurgeDsvOSError: If the file cannot be accessed due to permission restrictions.
             SplurgeDsvOSError: If the file cannot be read.
-            SplurgeDsvLookupError: If the file cannot be decoded using the provided ``encoding``.
+            SplurgeDsvLookupError: If the codecs initialization fails or codecs cannot be found.
+            SplurgeDsvUnicodeError: If the file cannot be decoded using the provided ``encoding``.
             SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvColumnMismatchError: If column validation fails.
             SplurgeDsvRuntimeError: For other runtime errors.
@@ -391,7 +400,7 @@ class DsvHelper:
         skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
 
         try:
-            reader = safe_io_text_file_reader.SafeTextFileReader(
+            reader = SafeTextFileReader(
                 effective_file_path,
                 encoding=encoding,
                 skip_header_lines=skip_header_rows,
@@ -405,8 +414,11 @@ class DsvHelper:
             # path validation errors are wrapped as PathValidationErrors in safe-io
             raise SplurgeDsvPathValidationError(message=ex.message, error_code=ex.error_code) from ex
         except SplurgeSafeIoLookupError as ex:
-            # encoding/decoding errors are wrapped as LookupErrors in safe-io
+            # codecs lookup errors are wrapped as LookupErrors in safe-io
             raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoUnicodeError as ex:
+            # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
+            raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
         except SplurgeSafeIoOSError as ex:
             # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
             raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
@@ -537,7 +549,8 @@ class DsvHelper:
             SplurgeDsvTypeError: If ``chunk`` is not a list of strings, or if any element in ``chunk`` is not a string.
             SplurgeDsvOSError: If the file does not exist.
             SplurgeDsvOSError: If the file cannot be accessed.
-            SplurgeDsvOSError: If the file cannot be decoded with the specified encoding.
+            SplurgeDsvLookupError: If the codecs initialization fails or codecs cannot be found.
+            SplurgeDsvUnicodeError: If the file cannot be decoded with the specified encoding.
             SplurgeDsvPathValidationError: If the file path is invalid.
             SplurgeDsvRuntimeError: For other runtime errors.
             SplurgeDsvColumnMismatchError: If column validation fails.
@@ -556,7 +569,7 @@ class DsvHelper:
             max_detect_chunks = max(int(max_detect_chunks), 1)
 
         try:
-            reader = safe_io_text_file_reader.SafeTextFileReader(
+            reader = SafeTextFileReader(
                 effective_file_path,
                 encoding=encoding,
                 skip_header_lines=skip_header_rows,
@@ -658,8 +671,11 @@ class DsvHelper:
                     raise_on_extra_columns=raise_on_extra_columns,
                 )
         except SplurgeSafeIoLookupError as ex:
-            # encoding/decoding errors are wrapped as LookupErrors in safe-io
+            # codecs lookup errors are wrapped as LookupErrors in safe-io
             raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+        except SplurgeSafeIoUnicodeError as ex:
+            # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
+            raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
         except SplurgeSafeIoOSError as ex:
             # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
             raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex

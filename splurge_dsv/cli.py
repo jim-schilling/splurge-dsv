@@ -21,10 +21,10 @@ import sys
 from pathlib import Path
 
 # Local imports
-from splurge_dsv import __version__
-from splurge_dsv.dsv import Dsv, DsvConfig
-from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import SplurgeDsvError
+from . import __version__
+from .dsv import Dsv, DsvConfig
+from .dsv_helper import DsvHelper
+from .exceptions import SplurgeDsvError
 
 
 def parse_arguments() -> argparse.Namespace:

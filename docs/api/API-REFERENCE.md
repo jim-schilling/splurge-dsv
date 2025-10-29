@@ -469,9 +469,15 @@ Hierarchy and descriptions:
     - Example: empty delimiter string
     - Example: negative chunk size
 
-  - `SplurgeDsvLookupError` — raised for encoding/decoding errors
-    - Maps from `SplurgeSafeIoLookupError` when file decoding fails
+  - `SplurgeDsvLookupError` — raised for lookup failures and codec-related errors
+    - Maps from `SplurgeSafeIoLookupError` for codec/encoding issues
+    - Example: unknown codec specified
     - Example: incorrect file encoding specified
+
+  - `SplurgeDsvUnicodeError` — raised for Unicode-related errors such as encoding/decoding failures
+    - Maps from `SplurgeSafeIoUnicodeError` when file decoding fails
+    - Example: file contains invalid byte sequences for the specified encoding
+    - Example: decoding error during text processing
 
   - `SplurgeDsvOSError` — raised for file I/O and OS-related errors
     - Maps from `SplurgeSafeIoOSError` for file not found, permission denied, and other OS failures
@@ -496,7 +502,8 @@ Error mapping from `splurge-safe-io`:
 The library maps exceptions from the underlying `splurge-safe-io` dependency
 into the `SplurgeDsv*` exception hierarchy:
 
-- `SplurgeSafeIoLookupError` → `SplurgeDsvLookupError` (encoding/decoding issues)
+- `SplurgeSafeIoLookupError` → `SplurgeDsvLookupError` (codec and lookup issues)
+- `SplurgeSafeIoUnicodeError` → `SplurgeDsvUnicodeError` (encoding/decoding failures)
 - `SplurgeSafeIoOSError` → `SplurgeDsvOSError` (file not found, permissions, etc.)
 - `SplurgeSafeIoPathValidationError` → `SplurgeDsvPathValidationError` (invalid paths)
 - `SplurgeSafeIoRuntimeError` → `SplurgeDsvRuntimeError` (other runtime errors)
@@ -509,8 +516,10 @@ Usage guidance:
       rows = DsvHelper.parse_file("data.csv", delimiter=",")
   except SplurgeDsvOSError:
       print("File not found or not readable")
+  except SplurgeDsvUnicodeError:
+      print("Encoding error - file contains invalid byte sequences")
   except SplurgeDsvLookupError:
-      print("Encoding error - try a different encoding")
+      print("Codec error - unknown or unsupported encoding")
   ```
 
 - Use `SplurgeDsvError` as a catch-all only for generic error reporting:
