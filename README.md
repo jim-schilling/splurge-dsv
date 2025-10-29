@@ -24,7 +24,7 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 272 tests with 90% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
 **⚠️ CHANGES in v2025.5.0**
 > - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.
