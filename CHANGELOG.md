@@ -4,7 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.5.0] - 2025-10-29
+
+### Updated
+- Bumped version to 2025.5.0 in `__init__.py` and `pyproject.toml`.
+- Refactored imports in `__init__.py` and `splurge_dsv/__init__.py` to remove runtime dependency checks for `splurge-safe-io`, as it is now vendored.
+- Refactored tests in `tests/integration/test_file_operations.py` to replace updated exception usage with the correct `SplurgeDsvUnicodeError`.
+- Refactored all imports in `splurge_dsv/*` modules to use vendored `splurge-safe-io` instead of the pip-installed package.
+- Refactored all imports in `tests/*` modules to use vendored `splurge-safe-io` instead of the pip-installed package.
+- Refactored all imports in `splurge_dsv/*` modules to use vendored `splurge-exceptions` instead of the pip-installed package.
+- Refactored all package absolute imports to use relative imports within the `splurge_dsv` package, where applicable.
+- File encoding/decoding errors are now raised as `SplurgeDsvUnicodeError` to align with the `splurge-safe-io` behavior.
+- Codecs related errors are now raised as `SplurgeDsvLookupError` to align with the `splurge-safe-io` behavior.
+
+### Changed/Added
+- Added vendored `splurge-exceptions` to v2025.3.0 to incorporate latest fixes and features.
+- Added vendored `splurge-safe-io` to v2025.4.1 to incorporate latest fixes and features.
+
+### Removed
+- Removed pip dependency on `splurge-exceptions` in favor of vendored copy.
+- Removed pip dependency on `splurge-safe-io` in favor of vendored copy.
+
 ## [2025.4.0] - 2025-10-26
+
 ### Added
 - Added `splurge-exceptions` v2025.1.0 as a dependency to standardize exception handling across Splurge libraries.
 - `SplurgeDsvError` exception was refactored to inherit from `SplurgeFrameworkException` class from `splurge-exceptions`.

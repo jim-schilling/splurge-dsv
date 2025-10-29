@@ -12,7 +12,7 @@ This module is licensed under the MIT License.
 """
 
 # Local imports
-from splurge_dsv.exceptions import SplurgeDsvValueError
+from .exceptions import SplurgeDsvValueError
 
 
 class StringTokenizer:

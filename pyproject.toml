@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "splurge-dsv"
-version = "2025.4.0"
+version = "2025.5.0"
 description = "A utility library for working with DSV (Delimited String Values) files"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,8 +26,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "splurge-exceptions>=2025.1.0,<2025.2.0",
-    "splurge-safe-io>=2025.2.1,<2025.3.0",
     "PyYAML>=6.0",
 ]
 
@@ -39,6 +37,7 @@ dev = [
     "ruff>=0.0.241",
     "pytest-mock>=3.0.0",
     "hypothesis>=6.0.0",
+    "pre-commit>=4.3.0",
 ]
 
 [project.urls]
@@ -81,6 +80,7 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
     "*/env/*",
+    "*/_vendor/*",
 ]
 
 [tool.coverage.report]

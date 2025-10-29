@@ -9,9 +9,8 @@ This module tests cross-platform compatibility features including:
 import tempfile
 from pathlib import Path
 
-from splurge_safe_io.safe_text_file_reader import SafeTextFileReader
-
 from splurge_dsv import Dsv, DsvConfig
+from splurge_dsv._vendor.splurge_safe_io.safe_text_file_reader import SafeTextFileReader
 
 
 class TestCrossPlatformCompatibility:

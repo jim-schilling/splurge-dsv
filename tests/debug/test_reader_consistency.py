@@ -3,8 +3,7 @@ from pathlib import Path
 
 # Ensure repository root is on sys.path for local package imports when tests run
 try:
-    from splurge_safe_io.safe_text_file_reader import SafeTextFileReader, open_safe_text_reader
-
+    from splurge_dsv._vendor.splurge_safe_io import SafeTextFileReader, open_safe_text_reader
     from splurge_dsv.dsv_helper import DsvHelper
     from splurge_dsv.string_tokenizer import StringTokenizer
 except Exception:

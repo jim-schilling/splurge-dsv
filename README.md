@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 [![CI](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml/badge.svg)](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![mypy](https://img.shields.io/badge/mypy-checked-black)](https://mypy-lang.org/)
 
@@ -25,6 +25,12 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
 - **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+
+**⚠️ CHANGES in v2025.5.0**
+> - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.
+>   - Removed pip dependencies on `splurge-exceptions` and `splurge-safe-io`.
+>   - All functionality remains the same; imports continue to work as before.
+>   - See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes.
 
 **⚠️ CHANGES in v2025.4.0**
 > - **Exception Hierarchy Refactored**: All exceptions now leverage the `splurge-exceptions` library with a unified hierarchy.

@@ -16,8 +16,8 @@ import pytest
 # Local imports
 from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import (
-    SplurgeDsvLookupError,
     SplurgeDsvOSError,
+    SplurgeDsvUnicodeError,
     SplurgeDsvValueError,
 )
 
@@ -226,7 +226,7 @@ class TestFileEncodingIntegration:
         # Write binary data that's not valid UTF-8
         test_file.write_bytes(b"a,b,c\nd,e,\xff\nf,g,h")
 
-        with pytest.raises(SplurgeDsvLookupError):
+        with pytest.raises(SplurgeDsvUnicodeError):
             DsvHelper.parse_file(test_file, delimiter=",")
 
     def test_parse_file_with_permission_error(self, tmp_path: Path) -> None:

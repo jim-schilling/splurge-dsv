@@ -16,16 +16,9 @@ Copyright (c) 2025 Jim Schilling
 # Ensure the required external implementation is available on import so the
 # rest of the package can rely on its APIs. Fail fast with a helpful message
 # instructing the user to install the package if it's missing.
-import importlib as _importlib
+
 import os
 from pathlib import Path as _Path
-
-try:  # pragma: no cover - import-time guard
-    _importlib.import_module("splurge_safe_io")
-except Exception as e:
-    raise ImportError(
-        "Missing required dependency 'splurge-safe-io'. Please install it: `pip install splurge-safe-io`"
-    ) from e
 
 try:
     try:
@@ -43,9 +36,9 @@ except Exception:
     pass
 
 # Local imports
-from splurge_dsv.dsv import Dsv, DsvConfig
-from splurge_dsv.dsv_helper import DsvHelper
-from splurge_dsv.exceptions import (
+from .dsv import Dsv, DsvConfig
+from .dsv_helper import DsvHelper
+from .exceptions import (
     SplurgeDsvColumnMismatchError,
     SplurgeDsvDataProcessingError,
     SplurgeDsvError,
@@ -56,13 +49,14 @@ from splurge_dsv.exceptions import (
     SplurgeDsvTypeError,
     SplurgeDsvValueError,
 )
-from splurge_dsv.string_tokenizer import StringTokenizer
+from .string_tokenizer import StringTokenizer
 
-__version__ = "2025.4.0"
+__version__ = "2025.5.0"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
 __all__ = [
+    "__version__",
     # Main classes
     "Dsv",
     "DsvConfig",

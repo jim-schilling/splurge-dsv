@@ -8,15 +8,6 @@ from pathlib import Path
 import pytest
 from hypothesis import strategies as st
 
-# The environment is expected to have `splurge_safe_io` installed. Import
-# the real modules so tests exercise the real integration points.
-try:
-    import splurge_safe_io.constants as safe_io_constants  # noqa: F401
-    import splurge_safe_io.path_validator as safe_io_path_validator  # noqa: F401
-    import splurge_safe_io.safe_text_file_reader as safe_io_text_file_reader  # noqa: F401
-except Exception as exc:  # pragma: no cover - test environment misconfiguration
-    raise ImportError("splurge_safe_io is required to run the tests; please install it in your environment") from exc
-
 from splurge_dsv.dsv import DsvConfig
 
 

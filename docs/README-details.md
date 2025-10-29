@@ -19,6 +19,14 @@
 - **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
 
+**⚠️ CHANGES in v2025.5.0**
+> - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.
+>   - Removed pip dependencies on `splurge-exceptions` and `splurge-safe-io`.
+>   - All functionality remains the same; imports continue to work as before.
+>   - File encoding/decoding errors now raise `SplurgeDsvUnicodeError` (new exception type).
+>   - Codec-related errors now raise `SplurgeDsvLookupError`.
+>   - See [CHANGELOG.md](../CHANGELOG.md) for detailed migration notes.
+
 **⚠️ CHANGES in v2025.4.0**
 > - **Exception Hierarchy Refactored**: All exceptions now leverage the `splurge-exceptions` library with a unified hierarchy.
 >   - All exceptions inherit from `SplurgeDsvError(SplurgeFrameworkError)`.
