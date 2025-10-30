@@ -16,8 +16,19 @@
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 283 tests with 93% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 272 tests with 90% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
+**⚠️ CHANGES in v2025.5.1**
+> - **Vendored Dependencies Update**: `splurge-exceptions` and `splurge-safe-io` have been updated.
+> - **Bumped Versions**:
+>   - Updated version to 2025.5.1 in `__init__.py` and `pyproject.toml`.
+> - **MyPy Configuration Update**:
+>   - Updated MyPy configuration to relax strictness on examples.
+>   - Updated `ci-lint-and-typecheck.yml` to run MyPy on the entire codebase.
+>   - Updated pre-commit hook for MyPy to check the full codebase.
+> - **Pytest Coverage Configuration Update**:
+>   - Updated coverage configuration to omit vendor and test files from reports.
+> - **See [CHANGELOG.md](../CHANGELOG.md) for detailed migration notes.**
 
 **⚠️ CHANGES in v2025.5.0**
 > - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.

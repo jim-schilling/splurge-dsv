@@ -86,7 +86,7 @@ class SafeTextFileWriter:
             file_path, must_exist=False, must_be_file=False, must_be_writable=False
         )
         self._encoding = encoding or DEFAULT_ENCODING
-        self._file_write_mode = file_write_mode or TextFileWriteMode.CREATE_OR_TRUNCATE
+        self._file_write_mode = file_write_mode or TextFileWriteMode.CREATE_OR_TRUNCATE  # type: ignore
         self._canonical_newline = canonical_newline or CANONICAL_NEWLINE
         # If True, create missing parent directories before opening the file
         self._create_parents = bool(create_parents)
@@ -264,14 +264,14 @@ class SafeTextFileWriter:
             SplurgeSafeIoRuntimeError: For other general runtime errors.
         """
         if lines is None:
-            return
+            return  # type: ignore
 
         normalized_parts = []
         # Normalize each line individually (do this outside the lock to
         # minimize contention) and collect them for a single write.
         for part in lines:
             if part is None:
-                continue
+                continue  # type: ignore
             # Ensure the part is a str; let TypeErrors propagate if not.
             normalized = part.replace("\r\n", self._canonical_newline).replace("\r", self._canonical_newline)
             normalized_parts.append(normalized)

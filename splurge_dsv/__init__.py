@@ -51,7 +51,7 @@ from .exceptions import (
 )
 from .string_tokenizer import StringTokenizer
 
-__version__ = "2025.5.0"
+__version__ = "2025.5.1"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 

@@ -481,7 +481,7 @@ class SplurgeError(Exception):
         """
         return self.get_full_message()
 
-    def __reduce__(self):
+    def __reduce__(self):  # type: ignore [no-untyped-def]
         """Support pickling by providing constructor args and state.
 
         The default Exception pickling uses the instance args (which are the
