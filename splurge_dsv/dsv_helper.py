@@ -564,7 +564,7 @@ class DsvHelper:
         # Allow callers to pass None to use the module default. Ensure we have
         # a positive integer to drive the detection loop.
         if max_detect_chunks is None:
-            max_detect_chunks = cls.MAX_DETECT_CHUNKS
+            max_detect_chunks = cls.MAX_DETECT_CHUNKS  # type: ignore
         else:
             max_detect_chunks = max(int(max_detect_chunks), 1)
 

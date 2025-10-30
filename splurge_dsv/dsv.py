@@ -91,7 +91,7 @@ class DsvConfig:
             raise SplurgeDsvValueError(f"skip_footer_rows cannot be negative, got {self.skip_footer_rows}")
 
     @classmethod
-    def csv(cls, **overrides) -> "DsvConfig":
+    def csv(cls, **overrides) -> "DsvConfig":  # type: ignore
         """
         Create a CSV configuration with sensible defaults.
 
@@ -109,7 +109,7 @@ class DsvConfig:
         return cls(delimiter=",", **overrides)
 
     @classmethod
-    def tsv(cls, **overrides) -> "DsvConfig":
+    def tsv(cls, **overrides) -> "DsvConfig":  # type: ignore
         """
         Create a TSV configuration with sensible defaults.
 
@@ -127,7 +127,7 @@ class DsvConfig:
         return cls(delimiter="\t", **overrides)
 
     @classmethod
-    def from_params(cls, **kwargs) -> "DsvConfig":
+    def from_params(cls, **kwargs) -> "DsvConfig":  # type: ignore
         """
         Create a DsvConfig from arbitrary keyword arguments.
 

@@ -26,6 +26,18 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **Comprehensive Documentation**: In-depth API reference and usage examples
 - **Exhaustive Testing**: 272 tests with 90% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
+**⚠️ CHANGES in v2025.5.1**
+> - **Vendored Dependencies Update**: `splurge-exceptions` and `splurge-safe-io` have been updated.
+> - **Bumped Versions**:
+>   - Updated version to 2025.5.1 in `__init__.py` and `pyproject.toml`.
+> - **MyPy Configuration Update**:
+>   - Updated MyPy configuration to relax strictness on examples.
+>   - Updated `ci-lint-and-typecheck.yml` to run MyPy on the entire codebase.
+>   - Updated pre-commit hook for MyPy to check the full codebase.
+> - **Pytest Coverage Configuration Update**:
+>   - Updated coverage configuration to omit vendor and test files from reports.
+> - **See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes.**
+
 **⚠️ CHANGES in v2025.5.0**
 > - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.
 >   - Removed pip dependencies on `splurge-exceptions` and `splurge-safe-io`.

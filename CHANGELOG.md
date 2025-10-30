@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.5.1] - 2025-10-30
+
+### Updated
+- **Vendored Dependencies Update**: `splurge-exceptions` and `splurge-safe-io` have been updated.
+- **Bumped Versions**:
+  - Updated version to 2025.5.1 in `__init__.py` and `pyproject.toml`.
+- **MyPy Configuration Update**:
+  - Updated MyPy configuration to relax strictness on examples.
+  - Updated `ci-lint-and-typecheck.yml` to run MyPy on the entire codebase.
+  - Updated pre-commit hook for MyPy to check the full codebase.
+- **Pytest Coverage Configuration Update**:
+  - Updated coverage configuration to omit vendor and test files from reports.
+
+
 ## [2025.5.0] - 2025-10-29
 
 ### Updated
