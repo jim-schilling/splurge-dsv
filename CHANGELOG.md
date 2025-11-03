@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+## [2025.5.2] - 2025-11-01
+
+### Updated
+- Bumped version to 2025.5.2 in `__init__.py` and `pyproject.toml`.
+- Updated vendored dependencies: `splurge-safe-io` has been updated to v2025.4.3
+
 ## [2025.5.1] - 2025-10-30
 
 ### Updated
