@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from hypothesis import strategies as st
 
-from splurge_dsv.dsv import DsvConfig
+from splurge_dsv.dsv_config import DsvConfig
 
 
 @pytest.fixture
