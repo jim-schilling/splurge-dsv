@@ -52,8 +52,9 @@ from .filters import TopicPattern
 from .message import Message
 from .pubsub import PubSub
 from .types import Callback, MessageData, SubscriberId, Topic
+from .utility import generate_correlation_id, is_valid_correlation_id, validate_correlation_id
 
-__version__ = "2025.1.1"
+__version__ = "2025.2.0"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
@@ -75,4 +76,7 @@ __all__ = [
     "ErrorHandler",
     "default_error_handler",
     "TopicDecorator",
+    "validate_correlation_id",
+    "is_valid_correlation_id",
+    "generate_correlation_id",
 ]

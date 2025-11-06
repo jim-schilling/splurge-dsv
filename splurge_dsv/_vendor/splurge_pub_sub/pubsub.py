@@ -8,7 +8,6 @@ Domains:
 """
 
 import logging
-import re
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -23,6 +22,7 @@ from .exceptions import (
 )
 from .message import Message
 from .types import Callback, MessageData, Metadata, SubscriberId, Topic
+from .utility import generate_correlation_id, validate_correlation_id
 
 if TYPE_CHECKING:
     from .decorators import TopicDecorator
@@ -83,17 +83,8 @@ class PubSub:
     """
 
     @staticmethod
-    def _generate_correlation_id() -> str:
-        """Generate a pattern-compliant correlation ID.
-
-        Returns:
-            A UUID string that matches the correlation_id pattern.
-        """
-        return str(uuid4())
-
-    @staticmethod
     def _normalize_correlation_id(
-        value: str | None, instance_correlation_id: str, allow_wildcard: bool = True
+        value: str | None, instance_correlation_id: str, *, allow_wildcard: bool = True
     ) -> str | None:
         """Normalize and validate correlation_id value.
 
@@ -118,22 +109,7 @@ class PubSub:
                 raise SplurgePubSubValueError("Cannot use '*' as correlation_id in publish()")
             return None  # Wildcard = match any
 
-        # Validate pattern: [a-zA-Z0-9][a-zA-Z0-9\.-_]* (1-64 chars)
-        if not (1 <= len(value) <= 64):
-            raise SplurgePubSubValueError(f"correlation_id length must be 1-64 chars, got {len(value)}")
-
-        if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\.\-_]*$", value):
-            raise SplurgePubSubValueError(
-                f"correlation_id must match pattern [a-zA-Z0-9][a-zA-Z0-9\\.-_]* (1-64 chars), got: {value!r}"
-            )
-
-        # Check for consecutive separators (., -, _) - same or different
-        separators = ".-_"
-        for i in range(len(value) - 1):
-            if value[i] in separators and value[i + 1] in separators:
-                raise SplurgePubSubValueError(
-                    f"correlation_id cannot contain consecutive separator characters ('.', '-', '_'), got: {value!r}"
-                )
+        validate_correlation_id(value)
 
         return value
 
@@ -153,7 +129,7 @@ class PubSub:
                           Defaults to logging errors. Must be passed as a keyword
                           argument.
             correlation_id: Optional correlation ID. If None or '', auto-generates.
-                           Must match pattern [a-zA-Z0-9][a-zA-Z0-9\\.-_]* (1-64 chars)
+                           Must match pattern [a-zA-Z0-9][a-zA-Z0-9\\\\.\\-_]*[a-zA-Z0-9] (2-64 chars)
                            with no consecutive '.', '-', or '_' characters.
                            Must be passed as a keyword argument.
 
@@ -173,7 +149,7 @@ class PubSub:
 
         # Normalize and set correlation_id
         if correlation_id is None or correlation_id == "":
-            self._correlation_id: str = self._generate_correlation_id()
+            self._correlation_id: str = generate_correlation_id()
         else:
             normalized = self._normalize_correlation_id(correlation_id, "", allow_wildcard=False)
             if normalized is None:
@@ -200,7 +176,7 @@ class PubSub:
             callback: Callable that accepts a Message and returns None
             correlation_id: Optional filter. If None or '', uses instance correlation_id.
                            If '*', matches any correlation_id. Otherwise must match pattern
-                           [a-zA-Z0-9][a-zA-Z0-9\\.-_]* (1-64 chars) with no consecutive '.', '-', or '_'.
+                           [a-zA-Z0-9][a-zA-Z0-9\\\\.\\-_]*[a-zA-Z0-9] (2-64 chars) with no consecutive '.', '-', or '_'.
                            Must be passed as a keyword argument.
 
         Returns:
@@ -302,8 +278,8 @@ class PubSub:
             data: Message payload (dict[str, Any] with string keys only). Defaults to empty dict if None.
             metadata: Optional metadata dictionary for message context. Defaults to empty dict if None.
             correlation_id: Optional correlation ID override. If None or '', uses self._correlation_id.
-                           If '*', raises error. Otherwise must match pattern [a-zA-Z0-9][a-zA-Z0-9\\.-_]*
-                           (1-64 chars) with no consecutive '.', '-', or '_' characters.
+                           If '*', raises error. Otherwise must match pattern [a-zA-Z0-9][a-zA-Z0-9\\\\.\\-_]*[a-zA-Z0-9]
+                           (2-64 chars) with no consecutive '.', '-', or '_' characters.
                            Must be passed as a keyword argument.
 
         Raises:

@@ -60,7 +60,7 @@ class Dsv:
         """Get the correlation id for this instance."""
         return self._correlation_id
 
-    def __init__(self, config: DsvConfig) -> None:
+    def __init__(self, config: DsvConfig, correlation_id: str | None = None) -> None:
         """
         Initialize DSV parser with configuration.
 
@@ -74,8 +74,9 @@ class Dsv:
             >>> config = DsvConfig(delimiter=",")
             >>> parser = Dsv(config)
         """
-        self._correlation_id = str(uuid4())
+        self._correlation_id = correlation_id or str(uuid4())
         self._config = config
+        self._pubsub.publish(topic="dsv.init", correlation_id=self._correlation_id)
 
     @property
     def config(self) -> DsvConfig:

@@ -8,12 +8,12 @@ Domains:
     - message
 """
 
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .exceptions import SplurgePubSubTypeError, SplurgePubSubValueError
 from .types import MessageData, Metadata, Topic
+from .utility import validate_correlation_id
 
 DOMAINS = ["pubsub", "message"]
 
@@ -107,32 +107,7 @@ class Message:
 
         # Validate correlation_id if provided
         if self.correlation_id is not None:
-            # Disallow empty string
-            if self.correlation_id == "":
-                raise SplurgePubSubValueError("correlation_id cannot be empty string, use None instead")
-
-            # Disallow wildcard '*' (only for filters, not concrete values)
-            if self.correlation_id == "*":
-                raise SplurgePubSubValueError("correlation_id cannot be '*' (wildcard), must be a specific value")
-
-            # Validate pattern: [a-zA-Z0-9][a-zA-Z0-9\.-_]* (1-64 chars)
-            if not (1 <= len(self.correlation_id) <= 64):
-                raise SplurgePubSubValueError(
-                    f"correlation_id length must be 1-64 chars, got {len(self.correlation_id)}"
-                )
-
-            if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9\.\-_]*$", self.correlation_id):
-                raise SplurgePubSubValueError(
-                    f"correlation_id must match pattern [a-zA-Z0-9][a-zA-Z0-9\\.-_]* (1-64 chars), got: {self.correlation_id!r}"
-                )
-
-            # Check for consecutive separators (., -, _) - same or different
-            separators = ".-_"
-            for i in range(len(self.correlation_id) - 1):
-                if self.correlation_id[i] in separators and self.correlation_id[i + 1] in separators:
-                    raise SplurgePubSubValueError(
-                        f"correlation_id cannot contain consecutive separator characters ('.', '-', '_'), got: {self.correlation_id!r}"
-                    )
+            validate_correlation_id(self.correlation_id)
 
     def __repr__(self) -> str:
         """Return a readable representation of the message.

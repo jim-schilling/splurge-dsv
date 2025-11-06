@@ -12,6 +12,7 @@ parsing lifecycle and event flow.
 from pathlib import Path
 
 from splurge_dsv._vendor.splurge_pub_sub.message import Message
+from splurge_dsv._vendor.splurge_pub_sub.utility import generate_correlation_id
 from splurge_dsv.dsv import Dsv
 from splurge_dsv.dsv_config import DsvConfig
 from splurge_dsv.dsv_helper import DsvHelper
@@ -139,9 +140,8 @@ def example_file_stream_parsing_with_events(tmp_file: Path) -> None:
     print("=" * 90)
 
     # Create Dsv instance with small chunk size for demonstration
+    correlation_id = generate_correlation_id()
     config = DsvConfig(delimiter=",", strip=True, chunk_size=50)
-    dsv_obj = Dsv(config)
-    correlation_id = dsv_obj.correlation_id
 
     print(f"\nCreated Dsv instance with correlation_id: {correlation_id}")
 
@@ -155,6 +155,8 @@ def example_file_stream_parsing_with_events(tmp_file: Path) -> None:
     print("Subscribed to all events (*) for both PubSub instances")
     print(f"Parsing file stream: {tmp_file} (chunk_size: 50)\n")
 
+    # late initialization so that subscriber is registered before events are published
+    dsv_obj = Dsv(config, correlation_id=correlation_id)
     # Parse file stream
     total_rows = 0
     for chunk_num, chunk in enumerate(dsv_obj.parse_file_stream(tmp_file), 1):
