@@ -14,6 +14,7 @@ from os import PathLike
 from pathlib import Path
 
 # Third-party imports (vendored)
+from ._vendor.splurge_pub_sub.pubsub import PubSub
 from ._vendor.splurge_safe_io.constants import (
     DEFAULT_CHUNK_SIZE as safe_io_DEFAULT_CHUNK_SIZE,
 )
@@ -51,6 +52,8 @@ class DsvHelper:
 
     Provides methods to parse DSV content from strings, lists of strings, and files.
     Supports configurable delimiters, text bookends, and whitespace handling options.
+    All parsing methods publish lifecycle events (begin, end, error) to registered
+    subscribers using optional correlation_id for tracing operations.
     """
 
     DEFAULT_CHUNK_SIZE = safe_io_DEFAULT_CHUNK_SIZE
@@ -66,6 +69,18 @@ class DsvHelper:
     DEFAULT_STRIP = True
     DEFAULT_BOOKEND_STRIP = True
 
+    _pubsub: PubSub = PubSub()
+
+    @classmethod
+    def get_pubsub(cls) -> PubSub:
+        """Get the pubsub instance for the parser."""
+        return cls._pubsub
+
+    @classmethod
+    def get_correlation_id(cls) -> str:
+        return cls._pubsub.correlation_id
+
+    # When detecting normalize_columns across a stream, how many chunks to scan
     @classmethod
     def parse(
         cls,
@@ -78,13 +93,15 @@ class DsvHelper:
         normalize_columns: int = 0,
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
+        correlation_id: str | None = None,
     ) -> list[str]:
         """Parse a single DSV line into tokens.
 
         This method tokenizes a single line of DSV text using the provided
         ``delimiter``. It optionally strips surrounding whitespace from each
         token and may remove configured bookend characters (for example,
-        double-quotes used around fields).
+        double-quotes used around fields). Publishes lifecycle events to
+        registered subscribers using the provided correlation_id.
 
         Args:
             content: The input line to tokenize.
@@ -95,7 +112,8 @@ class DsvHelper:
             normalize_columns: If > 0, ensure the returned list has exactly this many columns,
                 padding with empty strings or truncating as needed.
             raise_on_missing_columns: If True, raise an error if the line has fewer columns than ``normalize_columns``.
-            raise_on_extra_columns: If True, raise an error if the line has more columns than
+            raise_on_extra_columns: If True, raise an error if the line has more columns than ``normalize_columns``.
+            correlation_id: Optional correlation ID for tracing this operation.
 
         Returns:
             A list of parsed token strings.
@@ -111,30 +129,40 @@ class DsvHelper:
             >>> DsvHelper.parse('"a","b","c"', delimiter=",", bookend='"')
             ['a', 'b', 'c']
         """
-        if delimiter is None or delimiter == "":
-            raise SplurgeDsvValueError(
-                message="delimiter cannot be empty or None",
-                error_code="invalid-argument-value-or-type",
-                details={"delimiter": delimiter},
-            )
+        cls._pubsub.publish(topic="dsv.helper.parse.begin", correlation_id=correlation_id)
 
-        tokens: list[str] = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
-
-        if bookend:
-            tokens = [StringTokenizer.remove_bookends(token, bookend=bookend, strip=bookend_strip) for token in tokens]
-
-        # If requested, validate columns (raises) and/or normalize the row length
-        if normalize_columns and normalize_columns > 0:
-            # Validation is only performed if the caller asked for raises
-            if raise_on_missing_columns or raise_on_extra_columns:
-                cls._validate_columns(
-                    len(tokens),
-                    expected_columns=normalize_columns,
-                    raise_on_missing_columns=raise_on_missing_columns,
-                    raise_on_extra_columns=raise_on_extra_columns,
+        try:
+            if delimiter is None or delimiter == "":
+                raise SplurgeDsvValueError(
+                    message="delimiter cannot be empty or None",
+                    error_code="invalid-argument-value-or-type",
+                    details={"delimiter": delimiter},
                 )
 
-            tokens = cls._normalize_columns(tokens, expected_columns=normalize_columns)
+            tokens: list[str] = StringTokenizer.parse(content, delimiter=delimiter, strip=strip)
+
+            if bookend:
+                tokens = [
+                    StringTokenizer.remove_bookends(token, bookend=bookend, strip=bookend_strip) for token in tokens
+                ]
+
+            # If requested, validate columns (raises) and/or normalize the row length
+            if normalize_columns and normalize_columns > 0:
+                # Validation is only performed if the caller asked for raises
+                if raise_on_missing_columns or raise_on_extra_columns:
+                    cls._validate_columns(
+                        len(tokens),
+                        expected_columns=normalize_columns,
+                        raise_on_missing_columns=raise_on_missing_columns,
+                        raise_on_extra_columns=raise_on_extra_columns,
+                    )
+
+                tokens = cls._normalize_columns(tokens, expected_columns=normalize_columns)
+        except SplurgeDsvError as e:
+            cls._pubsub.publish(topic="dsv.helper.parse.error", data={"error": e})
+            raise
+        finally:
+            cls._pubsub.publish(topic="dsv.helper.parse.end", correlation_id=correlation_id)
 
         return tokens
 
@@ -232,11 +260,14 @@ class DsvHelper:
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
         detect_columns: bool = False,
+        correlation_id: str | None = None,
     ) -> list[list[str]]:
         """Parse multiple DSV lines.
 
         Given a list of lines (for example, the result of reading a file),
         return a list where each element is the list of tokens for that line.
+        Publishes lifecycle events to registered subscribers using the provided
+        correlation_id.
 
         Args:
             content: A list of input lines to parse.
@@ -249,6 +280,7 @@ class DsvHelper:
             raise_on_missing_columns: If True, raise an error if a line has fewer columns than ``normalize_columns``.
             raise_on_extra_columns: If True, raise an error if a line has more columns than ``normalize_columns``.
             detect_columns: If True and ``normalize_columns`` is not set or <= 0, detect the number of columns from the content.
+            correlation_id: Optional correlation ID for tracing this operation.
 
         Returns:
             A list of token lists, one per input line.
@@ -262,50 +294,64 @@ class DsvHelper:
             >>> DsvHelper.parses(["a,b,c", "d,e,f"], delimiter=",")
             [['a', 'b', 'c'], ['d', 'e', 'f']]
         """
-        if not isinstance(content, list):
-            raise SplurgeDsvTypeError(message="content must be a list", error_code="invalid-argument-type")
+        cls._pubsub.publish(topic="dsv.helper.parses.begin", correlation_id=correlation_id)
 
-        if not all(isinstance(item, str) for item in content):
-            raise SplurgeDsvTypeError(message="content must be a list of strings", error_code="invalid-argument-type")
+        try:
+            if not isinstance(content, list):
+                raise SplurgeDsvTypeError(message="content must be a list", error_code="invalid-argument-type")
 
-        # If requested, detect expected columns from the first logical row
-        if detect_columns and (not normalize_columns or normalize_columns <= 0):
-            if not content:
-                return []
-            # Find the first non-blank logical row in the provided content
-            first_non_blank = None
-            for ln in content:
-                if isinstance(ln, str) and ln.strip() != "":
-                    first_non_blank = ln
-                    break
-            if first_non_blank is None:
-                return []
+            if not all(isinstance(item, str) for item in content):
+                raise SplurgeDsvTypeError(
+                    message="content must be a list of strings", error_code="invalid-argument-type"
+                )
 
-            detected = cls.parse(
-                first_non_blank,
-                delimiter=delimiter,
-                strip=strip,
-                bookend=bookend,
-                bookend_strip=bookend_strip,
-                normalize_columns=0,
-                raise_on_missing_columns=False,
-                raise_on_extra_columns=False,
-            )
-            normalize_columns = len(detected)
+            # If requested, detect expected columns from the first logical row
+            if detect_columns and (not normalize_columns or normalize_columns <= 0):
+                if not content:
+                    return []
+                # Find the first non-blank logical row in the provided content
+                first_non_blank = None
+                for ln in content:
+                    if isinstance(ln, str) and ln.strip() != "":
+                        first_non_blank = ln
+                        break
+                if first_non_blank is None:
+                    return []
 
-        return [
-            cls.parse(
-                item,
-                delimiter=delimiter,
-                strip=strip,
-                bookend=bookend,
-                bookend_strip=bookend_strip,
-                normalize_columns=normalize_columns,
-                raise_on_missing_columns=raise_on_missing_columns,
-                raise_on_extra_columns=raise_on_extra_columns,
-            )
-            for item in content
-        ]
+                detected = cls.parse(
+                    first_non_blank,
+                    delimiter=delimiter,
+                    strip=strip,
+                    bookend=bookend,
+                    bookend_strip=bookend_strip,
+                    normalize_columns=0,
+                    raise_on_missing_columns=False,
+                    raise_on_extra_columns=False,
+                    correlation_id=correlation_id,
+                )
+                normalize_columns = len(detected)
+
+            result = [
+                cls.parse(
+                    item,
+                    delimiter=delimiter,
+                    strip=strip,
+                    bookend=bookend,
+                    bookend_strip=bookend_strip,
+                    normalize_columns=normalize_columns,
+                    raise_on_missing_columns=raise_on_missing_columns,
+                    raise_on_extra_columns=raise_on_extra_columns,
+                    correlation_id=correlation_id,
+                )
+                for item in content
+            ]
+        except SplurgeDsvError as e:
+            cls._pubsub.publish(topic="dsv.helper.parses.error", data={"error": e}, correlation_id=correlation_id)
+            raise
+        finally:
+            cls._pubsub.publish(topic="dsv.helper.parses.end", correlation_id=correlation_id)
+
+        return result
 
     @staticmethod
     def _validate_file_path(
@@ -358,13 +404,15 @@ class DsvHelper:
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
         detect_columns: bool = False,
+        correlation_id: str | None = None,
     ) -> list[list[str]]:
         """Read and parse an entire DSV file.
 
-        This convenience reads all lines from ``file_path`` using
+        This convenience method reads all lines from ``file_path`` using
         :class:`splurge_safe_io.safe_text_file_reader.SafeTextFileReader` and then parses each
         line into tokens. Header and footer rows may be skipped via the
-        ``skip_header_rows`` and ``skip_footer_rows`` parameters.
+        ``skip_header_rows`` and ``skip_footer_rows`` parameters. Publishes lifecycle
+        events to registered subscribers using the provided correlation_id.
 
         Args:
             file_path: Path to the file to read.
@@ -375,9 +423,12 @@ class DsvHelper:
             encoding: Text encoding to use when reading the file.
             skip_header_rows: Number of leading lines to ignore.
             skip_footer_rows: Number of trailing lines to ignore.
+            skip_empty_lines: If True, skip empty lines when reading the file.
             normalize_columns: Number of columns to normalize.
             raise_on_missing_columns: Raise an error if a line has fewer columns than ``normalize_columns``.
             raise_on_extra_columns: Raise an error if a line has more columns than ``normalize_columns``.
+            detect_columns: If True and ``normalize_columns`` is not set or <= 0, detect the number of columns from the content.
+            correlation_id: Optional correlation ID for tracing this operation.
 
         Returns:
             A list of token lists (one list per non-skipped line).
@@ -394,57 +445,70 @@ class DsvHelper:
             SplurgeDsvColumnMismatchError: If column validation fails.
             SplurgeDsvRuntimeError: For other runtime errors.
         """
-        effective_file_path = cls._validate_file_path(Path(file_path))
-
-        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
-        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+        cls._pubsub.publish(
+            topic="dsv.helper.parse.file.begin", data={"file_path": str(file_path)}, correlation_id=correlation_id
+        )
 
         try:
-            reader = SafeTextFileReader(
-                effective_file_path,
-                encoding=encoding,
-                skip_header_lines=skip_header_rows,
-                skip_footer_lines=skip_footer_rows,
+            effective_file_path = cls._validate_file_path(Path(file_path))
+
+            skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+            skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+
+            try:
+                reader = SafeTextFileReader(
+                    effective_file_path,
+                    encoding=encoding,
+                    skip_header_lines=skip_header_rows,
+                    skip_footer_lines=skip_footer_rows,
+                    strip=strip,
+                    skip_empty_lines=skip_empty_lines,
+                )
+                lines: list[str] = reader.readlines()
+
+            except SplurgeSafeIoPathValidationError as ex:
+                # path validation errors are wrapped as PathValidationErrors in safe-io
+                raise SplurgeDsvPathValidationError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoLookupError as ex:
+                # codecs lookup errors are wrapped as LookupErrors in safe-io
+                raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoUnicodeError as ex:
+                # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
+                raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoOSError as ex:
+                # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
+                raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoRuntimeError as ex:
+                # other runtime errors are wrapped as RuntimeErrors in safe-io
+                raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
+            except Exception as ex:
+                # If the exception is already a SplurgeDsvError (or subclass),
+                # re-raise it unchanged so callers can handle specific errors
+                # (for example, SplurgeDsvColumnMismatchError from validation).
+                if isinstance(ex, SplurgeDsvError):
+                    raise
+
+                raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
+
+            result = cls.parses(
+                lines,
+                delimiter=delimiter,
                 strip=strip,
-                skip_empty_lines=skip_empty_lines,
+                bookend=bookend,
+                bookend_strip=bookend_strip,
+                normalize_columns=normalize_columns,
+                raise_on_missing_columns=raise_on_missing_columns,
+                raise_on_extra_columns=raise_on_extra_columns,
+                detect_columns=detect_columns,
+                correlation_id=correlation_id,
             )
-            lines: list[str] = reader.readlines()
+        except SplurgeDsvError as e:
+            cls._pubsub.publish(topic="dsv.helper.parse.file.error", data={"error": e}, correlation_id=correlation_id)
+            raise
+        finally:
+            cls._pubsub.publish(topic="dsv.helper.parse.file.end", correlation_id=correlation_id)
 
-        except SplurgeSafeIoPathValidationError as ex:
-            # path validation errors are wrapped as PathValidationErrors in safe-io
-            raise SplurgeDsvPathValidationError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoLookupError as ex:
-            # codecs lookup errors are wrapped as LookupErrors in safe-io
-            raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoUnicodeError as ex:
-            # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
-            raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoOSError as ex:
-            # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
-            raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoRuntimeError as ex:
-            # other runtime errors are wrapped as RuntimeErrors in safe-io
-            raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
-        except Exception as ex:
-            # If the exception is already a SplurgeDsvError (or subclass),
-            # re-raise it unchanged so callers can handle specific errors
-            # (for example, SplurgeDsvColumnMismatchError from validation).
-            if isinstance(ex, SplurgeDsvError):
-                raise
-
-            raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
-
-        return cls.parses(
-            lines,
-            delimiter=delimiter,
-            strip=strip,
-            bookend=bookend,
-            bookend_strip=bookend_strip,
-            normalize_columns=normalize_columns,
-            raise_on_missing_columns=raise_on_missing_columns,
-            raise_on_extra_columns=raise_on_extra_columns,
-            detect_columns=detect_columns,
-        )
+        return result
 
     @classmethod
     def _process_stream_chunk(
@@ -458,6 +522,7 @@ class DsvHelper:
         normalize_columns: int = 0,
         raise_on_missing_columns: bool = False,
         raise_on_extra_columns: bool = False,
+        correlation_id: str | None = None,
     ) -> list[list[str]]:
         """Parse a chunk of lines into tokenized rows.
 
@@ -494,6 +559,7 @@ class DsvHelper:
             normalize_columns=normalize_columns,
             raise_on_missing_columns=raise_on_missing_columns,
             raise_on_extra_columns=raise_on_extra_columns,
+            correlation_id=correlation_id,
         )
 
     @classmethod
@@ -518,9 +584,13 @@ class DsvHelper:
         # from the beginning of a stream. Only used when
         # `detect_columns is True` and `normalize_columns` is falsy.
         max_detect_chunks: int = MAX_DETECT_CHUNKS,
+        correlation_id: str | None = None,
     ) -> Iterator[list[list[str]]]:
         """
         Stream-parse a DSV file into chunks of lines.
+
+        Publishes lifecycle events to registered subscribers using the provided
+        correlation_id for tracing operations.
 
         Args:
             file_path (PathLike[str] | str): The path to the file to parse.
@@ -531,6 +601,7 @@ class DsvHelper:
             encoding (str): The file encoding.
             skip_header_rows (int): Number of header rows to skip.
             skip_footer_rows (int): Number of footer rows to skip.
+            skip_empty_lines (bool): If True, skip empty lines when reading.
             normalize_columns (int): If > 0, ensure each returned list has exactly this many columns,
                 padding with empty strings or truncating as needed.
             raise_on_missing_columns (bool): If True, raise an error if a line has fewer columns than ``normalize_columns``.
@@ -540,6 +611,7 @@ class DsvHelper:
             chunk_size (int): Number of lines per chunk (default: 100).
             max_detect_chunks (int): When detecting columns, how many chunks to scan
                 from the start of the stream before giving up (default: 10).
+            correlation_id (str | None): Optional correlation ID for tracing this operation.
 
         Yields:
             list[list[str]]: Parsed rows for each chunk.
@@ -555,139 +627,153 @@ class DsvHelper:
             SplurgeDsvRuntimeError: For other runtime errors.
             SplurgeDsvColumnMismatchError: If column validation fails.
         """
-
-        effective_file_path = cls._validate_file_path(Path(file_path))
-
-        chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
-        skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
-        skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
-        # Allow callers to pass None to use the module default. Ensure we have
-        # a positive integer to drive the detection loop.
-        if max_detect_chunks is None:
-            max_detect_chunks = cls.MAX_DETECT_CHUNKS  # type: ignore
-        else:
-            max_detect_chunks = max(int(max_detect_chunks), 1)
+        cls._pubsub.publish(
+            topic="dsv.helper.parse.file.stream.begin",
+            data={"file_path": str(file_path)},
+            correlation_id=correlation_id,
+        )
 
         try:
-            reader = SafeTextFileReader(
-                effective_file_path,
-                encoding=encoding,
-                skip_header_lines=skip_header_rows,
-                skip_footer_lines=skip_footer_rows,
-                strip=strip,
-                skip_empty_lines=skip_empty_lines,
-                chunk_size=chunk_size,
-            )
-            stream_iter = reader.readlines_as_stream()
+            effective_file_path = cls._validate_file_path(Path(file_path))
 
-            if detect_columns and (not normalize_columns or normalize_columns <= 0):
-                # Buffer up to `max_detect_chunks` from the stream while
-                # searching for the first non-blank logical row. This allows us
-                # to detect the expected column count even if the first logical
-                # row doesn't appear in the very first chunk (for example,
-                # when the file begins with many blank lines or very small
-                # chunks).
-                buffered_chunks: list[list[str]] = []
-                max_scan = max_detect_chunks if max_detect_chunks is not None else cls.MAX_DETECT_CHUNKS
-                chunks_scanned = 0
+            chunk_size = max(chunk_size, cls.DEFAULT_MIN_CHUNK_SIZE)
+            skip_header_rows = max(skip_header_rows, cls.DEFAULT_SKIP_HEADER_ROWS)
+            skip_footer_rows = max(skip_footer_rows, cls.DEFAULT_SKIP_FOOTER_ROWS)
+            # Allow callers to pass None to use the module default. Ensure we have
+            # a positive integer to drive the detection loop.
+            if max_detect_chunks is None:
+                max_detect_chunks = cls.MAX_DETECT_CHUNKS  # type: ignore
+            else:
+                max_detect_chunks = max(int(max_detect_chunks), 1)
 
-                while chunks_scanned < max_scan:
-                    try:
-                        chunk = next(stream_iter)
-                    except StopIteration:
-                        break
-                    buffered_chunks.append(chunk)
+            try:
+                reader = SafeTextFileReader(
+                    effective_file_path,
+                    encoding=encoding,
+                    skip_header_lines=skip_header_rows,
+                    skip_footer_lines=skip_footer_rows,
+                    strip=strip,
+                    skip_empty_lines=skip_empty_lines,
+                    chunk_size=chunk_size,
+                )
+                stream_iter = reader.readlines_as_stream()
 
-                    # Inspect this chunk for the first non-blank logical row
-                    first_line = None
-                    for ln in chunk:
-                        if isinstance(ln, str) and ln.strip() != "":
-                            first_line = ln
+                if detect_columns and (not normalize_columns or normalize_columns <= 0):
+                    # Buffer up to `max_detect_chunks` from the stream while
+                    # searching for the first non-blank logical row. This allows us
+                    # to detect the expected column count even if the first logical
+                    # row doesn't appear in the very first chunk (for example,
+                    # when the file begins with many blank lines or very small
+                    # chunks).
+                    buffered_chunks: list[list[str]] = []
+                    max_scan = max_detect_chunks if max_detect_chunks is not None else cls.MAX_DETECT_CHUNKS
+                    chunks_scanned = 0
+
+                    while chunks_scanned < max_scan:
+                        try:
+                            chunk = next(stream_iter)
+                        except StopIteration:
+                            break
+                        buffered_chunks.append(chunk)
+
+                        # Inspect this chunk for the first non-blank logical row
+                        first_line = None
+                        for ln in chunk:
+                            if isinstance(ln, str) and ln.strip() != "":
+                                first_line = ln
+                                break
+
+                        if first_line is not None:
+                            detected = cls.parse(
+                                first_line,
+                                delimiter=delimiter,
+                                strip=strip,
+                                bookend=bookend,
+                                bookend_strip=bookend_strip,
+                                normalize_columns=0,
+                                raise_on_missing_columns=False,
+                                raise_on_extra_columns=False,
+                            )
+                            normalize_columns = len(detected)
+                            # remember which buffered chunk contained the first
+                            # logical row so we can start applying normalization
+                            # beginning with that chunk only
+                            detected_index = len(buffered_chunks) - 1
                             break
 
-                    if first_line is not None:
-                        detected = cls.parse(
-                            first_line,
-                            delimiter=delimiter,
-                            strip=strip,
-                            bookend=bookend,
-                            bookend_strip=bookend_strip,
-                            normalize_columns=0,
-                            raise_on_missing_columns=False,
-                            raise_on_extra_columns=False,
-                        )
-                        normalize_columns = len(detected)
-                        # remember which buffered chunk contained the first
-                        # logical row so we can start applying normalization
-                        # beginning with that chunk only
-                        detected_index = len(buffered_chunks) - 1
-                        break
+                        chunks_scanned += 1
 
-                    chunks_scanned += 1
+                    # Replay any buffered chunks (in order) so callers receive the
+                    # full content starting at the beginning of the file. If we
+                    # detected the first logical row in one of the buffered chunks
+                    # then only apply normalization beginning with that chunk;
+                    # earlier buffered chunks must be emitted without
+                    # normalization so we don't convert blank-only lines into
+                    # padded empty-token rows.
+                    if "detected_index" in locals():
+                        for idx, b in enumerate(buffered_chunks):
+                            use_norm = normalize_columns if idx == detected_index else 0
+                            yield cls._process_stream_chunk(
+                                b,
+                                delimiter=delimiter,
+                                strip=strip,
+                                bookend=bookend,
+                                bookend_strip=bookend_strip,
+                                normalize_columns=use_norm,
+                                raise_on_missing_columns=raise_on_missing_columns,
+                                raise_on_extra_columns=raise_on_extra_columns,
+                                correlation_id=correlation_id,
+                            )
+                    else:
+                        for b in buffered_chunks:
+                            yield cls._process_stream_chunk(
+                                b,
+                                delimiter=delimiter,
+                                strip=strip,
+                                bookend=bookend,
+                                bookend_strip=bookend_strip,
+                                normalize_columns=0,
+                                raise_on_missing_columns=raise_on_missing_columns,
+                                raise_on_extra_columns=raise_on_extra_columns,
+                                correlation_id=correlation_id,
+                            )
 
-                # Replay any buffered chunks (in order) so callers receive the
-                # full content starting at the beginning of the file. If we
-                # detected the first logical row in one of the buffered chunks
-                # then only apply normalization beginning with that chunk;
-                # earlier buffered chunks must be emitted without
-                # normalization so we don't convert blank-only lines into
-                # padded empty-token rows.
-                if "detected_index" in locals():
-                    for idx, b in enumerate(buffered_chunks):
-                        use_norm = normalize_columns if idx == detected_index else 0
-                        yield cls._process_stream_chunk(
-                            b,
-                            delimiter=delimiter,
-                            strip=strip,
-                            bookend=bookend,
-                            bookend_strip=bookend_strip,
-                            normalize_columns=use_norm,
-                            raise_on_missing_columns=raise_on_missing_columns,
-                            raise_on_extra_columns=raise_on_extra_columns,
-                        )
-                else:
-                    for b in buffered_chunks:
-                        yield cls._process_stream_chunk(
-                            b,
-                            delimiter=delimiter,
-                            strip=strip,
-                            bookend=bookend,
-                            bookend_strip=bookend_strip,
-                            normalize_columns=0,
-                            raise_on_missing_columns=raise_on_missing_columns,
-                            raise_on_extra_columns=raise_on_extra_columns,
-                        )
+                # Continue streaming the rest of the file
+                for chunk in stream_iter:
+                    yield cls._process_stream_chunk(
+                        chunk,
+                        delimiter=delimiter,
+                        strip=strip,
+                        bookend=bookend,
+                        bookend_strip=bookend_strip,
+                        normalize_columns=normalize_columns,
+                        raise_on_missing_columns=raise_on_missing_columns,
+                        raise_on_extra_columns=raise_on_extra_columns,
+                        correlation_id=correlation_id,
+                    )
+            except SplurgeSafeIoLookupError as ex:
+                # codecs lookup errors are wrapped as LookupErrors in safe-io
+                raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoUnicodeError as ex:
+                # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
+                raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoOSError as ex:
+                # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
+                raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
+            except SplurgeSafeIoRuntimeError as ex:
+                # other runtime errors are wrapped as RuntimeErrors in safe-io
+                raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
+            except Exception as ex:
+                # Preserve and re-raise known SplurgeDsvError subclasses so
+                # callers can handle specific errors (e.g. column mismatch) as
+                # intended. Only wrap unknown exceptions in a generic
+                # SplurgeDsvError.
+                if isinstance(ex, SplurgeDsvError):
+                    raise
 
-            # Continue streaming the rest of the file
-            for chunk in stream_iter:
-                yield cls._process_stream_chunk(
-                    chunk,
-                    delimiter=delimiter,
-                    strip=strip,
-                    bookend=bookend,
-                    bookend_strip=bookend_strip,
-                    normalize_columns=normalize_columns,
-                    raise_on_missing_columns=raise_on_missing_columns,
-                    raise_on_extra_columns=raise_on_extra_columns,
-                )
-        except SplurgeSafeIoLookupError as ex:
-            # codecs lookup errors are wrapped as LookupErrors in safe-io
-            raise SplurgeDsvLookupError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoUnicodeError as ex:
-            # encoding/decoding errors are wrapped as UnicodeErrors in safe-io
-            raise SplurgeDsvUnicodeError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoOSError as ex:
-            # file not found, file permission, and file access errors are wrapped as OSErrors in safe-io
-            raise SplurgeDsvOSError(message=ex.message, error_code=ex.error_code) from ex
-        except SplurgeSafeIoRuntimeError as ex:
-            # other runtime errors are wrapped as RuntimeErrors in safe-io
-            raise SplurgeDsvRuntimeError(message=ex.message, error_code=ex.error_code) from ex
-        except Exception as ex:
-            # Preserve and re-raise known SplurgeDsvError subclasses so
-            # callers can handle specific errors (e.g. column mismatch) as
-            # intended. Only wrap unknown exceptions in a generic
-            # SplurgeDsvError.
-            if isinstance(ex, SplurgeDsvError):
-                raise
-
-            raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
+                raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
+        except SplurgeDsvError as e:
+            cls._pubsub.publish(topic="dsv.parse.file.stream.error", data={"error": e}, correlation_id=correlation_id)
+            raise
+        finally:
+            cls._pubsub.publish(topic="dsv.helper.parse.file.stream.end", correlation_id=correlation_id)

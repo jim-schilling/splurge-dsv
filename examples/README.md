@@ -2,6 +2,40 @@
 
 This directory contains comprehensive examples demonstrating how to use the splurge-dsv library.
 
+## End-to-End Parsing with Event Tracking
+
+The `api_with_events.py` file demonstrates end-to-end DSV parsing workflows with event subscriptions and correlation tracking using the PubSub framework.
+
+### Features Demonstrated
+
+- **Event-Driven Architecture**: Subscribe to parsing lifecycle events
+- **Correlation Tracking**: Track operations using correlation_id across parsing pipeline
+- **Multiple PubSub Instances**: Separate subscriptions for Dsv and DsvHelper
+- **Event Topics**: Understand all lifecycle events (begin, end, error)
+- **Basic Parsing**: Single strings, batch operations with full event tracking
+- **File Operations**: Complete file parsing with event monitoring
+- **Streaming**: Large file processing with chunk-level events
+- **Advanced Features**: Bookend removal, column detection, multiple instances
+
+### Running the End-to-End Event Example
+
+From the project root directory:
+
+```bash
+# Using module execution (recommended)
+python -m examples.api_with_events
+
+# Or directly
+PYTHONPATH=. python examples/api_with_events.py
+```
+
+### Key Patterns Demonstrated
+
+- **Event Subscription**: How to subscribe to all topics with specific correlation_id
+- **Callback Implementation**: Receiving Message objects from PubSub
+- **Lifecycle Tracking**: From parse.begin through parse.end or parse.error
+- **Correlation Tracing**: Following operations across multiple services
+
 ## Modern API Example
 
 The `modern_api_example.py` file demonstrates the new object-oriented Dsv API introduced in version 2025.1.x.
