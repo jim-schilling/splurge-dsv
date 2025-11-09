@@ -16,9 +16,9 @@ import pytest
 
 # Local imports
 from splurge_dsv._vendor.splurge_pub_sub.message import Message
+from splurge_dsv._vendor.splurge_pub_sub.pubsub_solo import PubSubSolo
 from splurge_dsv.dsv import Dsv
 from splurge_dsv.dsv_config import DsvConfig
-from splurge_dsv.dsv_helper import DsvHelper
 from splurge_dsv.exceptions import SplurgeDsvOSError
 
 
@@ -69,16 +69,13 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse a single string
         content = "a,b,c"
         result = dsv_obj.parse(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse result
         assert result == ["a", "b", "c"], "Parse should return correct tokens"
@@ -109,16 +106,13 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse multiple strings
         content = ["a,b,c", "d,e,f", "g,h,i"]
         result = dsv_obj.parses(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse result
         assert result == [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]], "Parses should return correct tokens"
@@ -153,15 +147,12 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse file
         result = dsv_obj.parse_file(csv_file)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse result
         assert len(result) == 3, "Should parse 3 rows"
@@ -200,15 +191,12 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse file stream
         chunks = list(dsv_obj.parse_file_stream(csv_file))
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify stream results
         assert len(chunks) > 0, "Should have parsed chunks"
@@ -245,12 +233,8 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Attempt to parse with mismatched columns - this should work since normalize_columns wasn't set
         # Let's try a different error - parse content with file not found
@@ -258,6 +242,7 @@ class TestDsvToDsvHelperPubSubWorkflow:
 
         with pytest.raises(SplurgeDsvOSError):  # Should raise SplurgeDsvOSError
             dsv_obj.parse_file(nonexistent_file)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify events were captured
         assert len(event_tracker["events"]) > 0, "Should have captured events"
@@ -284,17 +269,6 @@ class TestDsvToDsvHelperPubSubWorkflow:
         # Verify they have different correlation_ids
         assert dsv_obj1.correlation_id != dsv_obj2.correlation_id, "Each Dsv instance should have unique correlation_id"
 
-        # Verify they share the same pubsub instance
-        assert Dsv.get_pubsub() is Dsv.get_pubsub(), "Dsv instances should share global pubsub"
-
-    def test_dsv_and_dsvhelper_share_separate_pubsub_instances(self) -> None:
-        """Test that Dsv and DsvHelper have separate pubsub instances."""
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        # Verify they are different instances
-        assert dsv_pubsub is not dsv_helper_pubsub, "Dsv and DsvHelper should have separate pubsub instances"
-
     def test_event_flow_parse_workflow(self, event_tracker: dict[str, Any], event_callback: Callable) -> None:
         """Test the complete event flow for a parse workflow."""
         # Create Dsv instance and subscribe to events
@@ -302,12 +276,8 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Clear events from __init__
         event_tracker["events"].clear()
@@ -315,6 +285,7 @@ class TestDsvToDsvHelperPubSubWorkflow:
         # Parse a string
         content = " a , b , c "
         result = dsv_obj.parse(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse result
         assert result == ["a", "b", "c"], "Should strip whitespace and parse correctly"
@@ -341,16 +312,13 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse with bookended content
         content = '"a","b","c"'
         result = dsv_obj.parse(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify bookends were removed
         assert result == ["a", "b", "c"], "Should remove bookends"
@@ -367,16 +335,13 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse multiple strings to trigger column detection
         content = ["a,b,c", "d,e,f"]
         result = dsv_obj.parses(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse results
         assert result == [["a", "b", "c"], ["d", "e", "f"]], "Should parse correctly with column detection"
@@ -393,16 +358,13 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse tab-delimited content
         content = "a\tb\tc"
         result = dsv_obj.parse(content)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify parse result
         assert result == ["a", "b", "c"], "Should parse tab-delimited content"
@@ -425,15 +387,12 @@ class TestDsvToDsvHelperPubSubWorkflow:
         dsv_obj = Dsv(config)
         correlation_id = dsv_obj.correlation_id
 
-        # Subscribe to all topics for this correlation_id on both pubsub instances
-        dsv_pubsub = Dsv.get_pubsub()
-        dsv_helper_pubsub = DsvHelper.get_pubsub()
-
-        dsv_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
-        dsv_helper_pubsub.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id)
+        # Subscribe to all topics for this correlation_id
+        PubSubSolo.subscribe(topic="*", callback=event_callback, correlation_id=correlation_id, scope="splurge-dsv")
 
         # Parse file
         result = dsv_obj.parse_file(csv_file)
+        PubSubSolo.drain(2000, scope="splurge-dsv")
 
         # Verify header was skipped
         assert result[0] == ["name", "age", "city"], "First row should be actual header after skip"

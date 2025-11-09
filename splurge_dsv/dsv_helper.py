@@ -14,7 +14,7 @@ from os import PathLike
 from pathlib import Path
 
 # Third-party imports (vendored)
-from ._vendor.splurge_pub_sub.pubsub import PubSub
+from ._vendor.splurge_pub_sub.pubsub_solo import PubSubSolo
 from ._vendor.splurge_safe_io.constants import (
     DEFAULT_CHUNK_SIZE as safe_io_DEFAULT_CHUNK_SIZE,
 )
@@ -69,17 +69,6 @@ class DsvHelper:
     DEFAULT_STRIP = True
     DEFAULT_BOOKEND_STRIP = True
 
-    _pubsub: PubSub = PubSub()
-
-    @classmethod
-    def get_pubsub(cls) -> PubSub:
-        """Get the pubsub instance for the parser."""
-        return cls._pubsub
-
-    @classmethod
-    def get_correlation_id(cls) -> str:
-        return cls._pubsub.correlation_id
-
     # When detecting normalize_columns across a stream, how many chunks to scan
     @classmethod
     def parse(
@@ -129,7 +118,7 @@ class DsvHelper:
             >>> DsvHelper.parse('"a","b","c"', delimiter=",", bookend='"')
             ['a', 'b', 'c']
         """
-        cls._pubsub.publish(topic="dsv.helper.parse.begin", correlation_id=correlation_id)
+        PubSubSolo.publish(topic="dsv.helper.parse.begin", correlation_id=correlation_id, scope="splurge-dsv")
 
         try:
             if delimiter is None or delimiter == "":
@@ -159,10 +148,12 @@ class DsvHelper:
 
                 tokens = cls._normalize_columns(tokens, expected_columns=normalize_columns)
         except SplurgeDsvError as e:
-            cls._pubsub.publish(topic="dsv.helper.parse.error", data={"error": e})
+            PubSubSolo.publish(
+                topic="dsv.helper.parse.error", data={"error": e}, correlation_id=correlation_id, scope="splurge-dsv"
+            )
             raise
         finally:
-            cls._pubsub.publish(topic="dsv.helper.parse.end", correlation_id=correlation_id)
+            PubSubSolo.publish(topic="dsv.helper.parse.end", correlation_id=correlation_id, scope="splurge-dsv")
 
         return tokens
 
@@ -294,7 +285,7 @@ class DsvHelper:
             >>> DsvHelper.parses(["a,b,c", "d,e,f"], delimiter=",")
             [['a', 'b', 'c'], ['d', 'e', 'f']]
         """
-        cls._pubsub.publish(topic="dsv.helper.parses.begin", correlation_id=correlation_id)
+        PubSubSolo.publish(topic="dsv.helper.parses.begin", correlation_id=correlation_id, scope="splurge-dsv")
 
         try:
             if not isinstance(content, list):
@@ -346,10 +337,12 @@ class DsvHelper:
                 for item in content
             ]
         except SplurgeDsvError as e:
-            cls._pubsub.publish(topic="dsv.helper.parses.error", data={"error": e}, correlation_id=correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.helper.parses.error", data={"error": e}, correlation_id=correlation_id, scope="splurge-dsv"
+            )
             raise
         finally:
-            cls._pubsub.publish(topic="dsv.helper.parses.end", correlation_id=correlation_id)
+            PubSubSolo.publish(topic="dsv.helper.parses.end", correlation_id=correlation_id, scope="splurge-dsv")
 
         return result
 
@@ -445,8 +438,11 @@ class DsvHelper:
             SplurgeDsvColumnMismatchError: If column validation fails.
             SplurgeDsvRuntimeError: For other runtime errors.
         """
-        cls._pubsub.publish(
-            topic="dsv.helper.parse.file.begin", data={"file_path": str(file_path)}, correlation_id=correlation_id
+        PubSubSolo.publish(
+            topic="dsv.helper.parse.file.begin",
+            data={"file_path": str(file_path)},
+            correlation_id=correlation_id,
+            scope="splurge-dsv",
         )
 
         try:
@@ -503,10 +499,15 @@ class DsvHelper:
                 correlation_id=correlation_id,
             )
         except SplurgeDsvError as e:
-            cls._pubsub.publish(topic="dsv.helper.parse.file.error", data={"error": e}, correlation_id=correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.helper.parse.file.error",
+                data={"error": e},
+                correlation_id=correlation_id,
+                scope="splurge-dsv",
+            )
             raise
         finally:
-            cls._pubsub.publish(topic="dsv.helper.parse.file.end", correlation_id=correlation_id)
+            PubSubSolo.publish(topic="dsv.helper.parse.file.end", correlation_id=correlation_id, scope="splurge-dsv")
 
         return result
 
@@ -627,10 +628,11 @@ class DsvHelper:
             SplurgeDsvRuntimeError: For other runtime errors.
             SplurgeDsvColumnMismatchError: If column validation fails.
         """
-        cls._pubsub.publish(
+        PubSubSolo.publish(
             topic="dsv.helper.parse.file.stream.begin",
             data={"file_path": str(file_path)},
             correlation_id=correlation_id,
+            scope="splurge-dsv",
         )
 
         try:
@@ -773,7 +775,14 @@ class DsvHelper:
 
                 raise SplurgeDsvRuntimeError(f"Runtime error reading file: {effective_file_path} : {str(ex)}") from ex
         except SplurgeDsvError as e:
-            cls._pubsub.publish(topic="dsv.parse.file.stream.error", data={"error": e}, correlation_id=correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.parse.file.stream.error",
+                data={"error": e},
+                correlation_id=correlation_id,
+                scope="splurge-dsv",
+            )
             raise
         finally:
-            cls._pubsub.publish(topic="dsv.helper.parse.file.stream.end", correlation_id=correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.helper.parse.file.stream.end", correlation_id=correlation_id, scope="splurge-dsv"
+            )

@@ -10,8 +10,7 @@ except Exception:
     # Fallback for running the test as a script: add repository root to sys.path
     ROOT = Path(__file__).resolve().parents[3]
     sys.path.insert(0, str(ROOT))
-    from splurge_safe_io.safe_text_file_reader import SafeTextFileReader, open_safe_text_reader
-
+    from splurge_dsv._vendor.splurge_safe_io.safe_text_file_reader import SafeTextFileReader, open_safe_text_reader
     from splurge_dsv.dsv_helper import DsvHelper
     from splurge_dsv.string_tokenizer import StringTokenizer
 

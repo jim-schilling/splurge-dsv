@@ -74,6 +74,7 @@ from splurge_dsv import (
     DsvConfig,
     DsvHelper,
     StringTokenizer,
+    PubSubSolo,
     # exceptions
     SplurgeDsvError,
     SplurgeDsvColumnMismatchError,
@@ -82,6 +83,25 @@ from splurge_dsv import (
 
 Note: lower-level file reading and path validation functionality is provided
 by the `splurge-safe-io` dependency and is referenced where appropriate.
+
+### Event Publishing and Correlation IDs
+
+Splurge DSV integrates **event-driven architecture** through `PubSubSolo`, a
+lightweight in-memory publish-subscribe system. Each parsing operation publishes
+events throughout its lifecycle, allowing callers to monitor and trace execution
+across an entire end-to-end workflow using **correlation IDs**.
+
+Key concepts:
+
+- **correlation_id**: A unique identifier attached to all events for a particular
+  parsing operation or workflow. Use correlation IDs to trace a complete request
+  across multiple parsing steps, service boundaries, or integration points.
+- **PubSubSolo**: Global in-memory event bus. Use to subscribe to parsing events
+  (begin, end, error) and consume them in real-time callbacks.
+- **Event topics**: Structured as `"<service>.<operation>.<phase>"` (e.g.,
+  `"dsv.parse.begin"`, `"dsv.parse.end"`, `"dsv.parse.error"`).
+- **Scope**: Events are organized by scope (default: `"splurge-dsv"`). Use scopes
+  to isolate event streams in multi-component systems.
 
 ---
 
@@ -182,16 +202,32 @@ and `DsvHelper` for one-off parsing.
 Constructor:
 
 ```py
-Dsv(config: DsvConfig)
+Dsv(config: DsvConfig, correlation_id: str | None = None)
 ```
 
-Public methods (signatures and descriptions):
+Parameters:
+
+- `config` (DsvConfig): Configuration object containing parsing parameters.
+- `correlation_id` (str | None): Optional unique identifier for tracing this
+  parser instance's operations. If not provided, a UUID is automatically
+  generated. All events emitted by this parser will carry this correlation_id,
+  allowing callers to track a complete parsing workflow and correlate it with
+  other operations in a distributed system.
+
+Public properties:
+
+- `correlation_id` (str): Read-only property returning the current instance's
+  correlation ID.
+- `config` (DsvConfig): Read-only property returning the configuration.
 
 - `parse(self, content: str, *, normalize_columns: int | None = None) -> list[str]`
   - Parse a single logical record (a line). If `normalize_columns` is None
     or 0 the row is returned as parsed; if a positive int is passed, the
     returned row will be padded with empty strings or truncated to match the
     length.
+  - **Events published**: `"dsv.parse.begin"` (at start), `"dsv.parse.end"` (on
+    success), `"dsv.parse.error"` (on failure). All events carry the instance's
+    `correlation_id`.
   - Raises: `SplurgeDsvValueError` for invalid args, `SplurgeDsvRuntimeError`
     for tokenization errors.
 
@@ -199,13 +235,16 @@ Public methods (signatures and descriptions):
   - Parse a list of logical records. When `detect_columns=True`, the helper
     will determine `normalize_columns` from the first non-blank logical row
     if not explicitly provided.
+  - **Events published**: `"dsv.parses.begin"` and `"dsv.parses.end"` (or error).
 
 - `parse_file(self, file_path, *, normalize_columns: int | None = None) -> list[list[str]]`
   - Read and parse the entire file into memory. Uses `DsvConfig.encoding`.
   - Honors `DsvConfig.skip_empty_lines`: when True the underlying reader will filter out raw empty logical lines (line.strip() == "") before parsing; when False blank lines are passed through and parsed normally.
+  - **Events published**: `"dsv.parse.file.begin"`, `"dsv.parse.file.end"`,
+    and error events.
   - Raises file-related exceptions (see Exceptions section) for IO issues.
 
-- `parse_file_stream(self, file_path, *, normalize_columns: int | None = None) -> Iterator[list[list[str]]]
+- `parse_file_stream(self, file_path, *, normalize_columns: int | None = None) -> Iterator[list[list[str]]]`
   - Stream-parse a file. Yields chunks (lists of rows) according to
     `DsvConfig.chunk_size`. When `detect_columns=True` and
     `normalize_columns` is falsy, the stream will buffer and scan up to
@@ -218,6 +257,8 @@ Public methods (signatures and descriptions):
     stream reaches the parser; otherwise blank logical lines are provided to
     the parser and will be tokenized/normalized/validated according to the
     configured `strip`, `normalize_columns`, and strict validation flags.
+  - **Events published**: `"dsv.parse.file.stream.begin"`,
+    `"dsv.parse.file.stream.end"`, and error events.
   - Raises: file errors, decoding errors, and `SplurgeDsvColumnMismatchError`
     when strict validation flags are set and violated.
 
@@ -225,6 +266,8 @@ Notes:
 
 - `Dsv` methods forward to `DsvHelper` under the hood — behavior and
   exceptions are consistent between the two.
+- All events are published with `correlation_id=self.correlation_id` and
+  `scope="splurge-dsv"`, enabling end-to-end workflow tracing.
 
 ### DsvHelper
 
@@ -312,6 +355,132 @@ The `splurge_dsv` package maps errors from `splurge-safe-io` into its own
 exceptions (see Exceptions section). If you need fine-grained control over
 file reading (for example, to stream over non-file sources), use
 `splurge-safe-io` directly.
+
+---
+
+## Event Publishing with PubSubSolo
+
+### Overview
+
+Splurge DSV emits structured events throughout the parsing lifecycle via
+**PubSubSolo**, a lightweight global in-memory publish-subscribe system. This
+enables real-time monitoring, distributed tracing, and end-to-end workflow
+correlation using **correlation IDs**.
+
+### PubSubSolo Public API
+
+**Subscription:**
+
+```python
+from splurge_dsv import PubSubSolo
+
+def event_callback(message: Message) -> None:
+    """Handle an event."""
+    print(f"Topic: {message.topic}, Correlation ID: {message.correlation_id}")
+
+# Subscribe to all events for a specific correlation_id
+PubSubSolo.subscribe(
+    topic="*",
+    callback=event_callback,
+    correlation_id="my-trace-id",
+    scope="splurge-dsv"
+)
+```
+
+Signature:
+
+```python
+PubSubSolo.subscribe(
+    topic: str,
+    callback: Callable[[Message], None],
+    correlation_id: str | None = None,
+    scope: str = "splurge-dsv"
+) -> None
+```
+
+Parameters:
+
+- `topic` (str): Event topic to subscribe to. Use `"*"` as wildcard to match
+  all topics within the scope. Topics follow the pattern
+  `"<service>.<operation>.<phase>"` (e.g., `"dsv.parse.begin"`).
+- `callback` (Callable[[Message], None]): Function invoked when an event
+  matching the topic and correlation_id is published.
+- `correlation_id` (str | None): Filter events to a specific correlation ID.
+  If None, subscribe to all events matching the topic regardless of
+  correlation_id.
+- `scope` (str): Event namespace. Default `"splurge-dsv"` isolates DSV events
+  from other components.
+
+**Draining (flushing) events:**
+
+```python
+# Process all pending events in the queue (blocking, with timeout)
+PubSubSolo.drain(timeout_ms=2000, scope="splurge-dsv")
+```
+
+Signature:
+
+```python
+PubSubSolo.drain(timeout_ms: int, scope: str = "splurge-dsv") -> None
+```
+
+Parameters:
+
+- `timeout_ms` (int): Maximum time to wait for events to be processed
+  (milliseconds).
+- `scope` (str): Event namespace to drain.
+
+### Published Events
+
+The following events are published by `Dsv` and `DsvHelper` instances:
+
+**Dsv lifecycle events:**
+
+- `dsv.init` — Published when a `Dsv` instance is created.
+- `dsv.parse.begin` — Published when `parse()` starts.
+- `dsv.parse.end` — Published when `parse()` completes successfully.
+- `dsv.parse.error` — Published when `parse()` fails; includes error data.
+- `dsv.parses.begin` — Published when `parses()` starts.
+- `dsv.parses.end` — Published when `parses()` completes successfully.
+- `dsv.parses.error` — Published when `parses()` fails.
+- `dsv.parse.file.begin` — Published when `parse_file()` starts.
+- `dsv.parse.file.end` — Published when `parse_file()` completes successfully.
+- `dsv.parse.file.error` — Published when `parse_file()` fails.
+- `dsv.parse.file.stream.begin` — Published when `parse_file_stream()` starts.
+- `dsv.parse.file.stream.chunk` — Published when a chunk is yielded.
+- `dsv.parse.file.stream.end` — Published when streaming completes.
+- `dsv.parse.file.stream.error` — Published when streaming fails.
+
+**DsvHelper lifecycle events:**
+
+- `dsv.helper.parse.begin`, `dsv.helper.parse.end`, `dsv.helper.parse.error`
+- `dsv.helper.parses.begin`, `dsv.helper.parses.end`, `dsv.helper.parses.error`
+- `dsv.helper.parse.file.begin`, `dsv.helper.parse.file.end`,
+  `dsv.helper.parse.file.error`
+- `dsv.helper.parse.file.stream.begin`, `dsv.helper.parse.file.stream.end`,
+  `dsv.helper.parse.file.stream.error`
+
+All events carry:
+
+- `topic` (str): The event topic.
+- `correlation_id` (str | None): The associated correlation ID (if any).
+- `data` (dict | None): Optional event data (e.g., error details).
+- `metadata` (dict | None): Optional event metadata (e.g., error details).
+- `timestamp` (datetime): Event publication time.
+
+### Message Class
+
+```python
+from splurge_dsv._vendor.splurge_pub_sub.message import Message
+
+class Message:
+    topic: str
+    data: dict | None
+    metadata: dict | None
+    correlation_id: str | None
+    timestamp: datetime
+    scope: str
+```
 
 ---
 
@@ -593,6 +762,177 @@ for chunk in parser.parse_file_stream("big.csv"):
     for row in chunk:
         # row is already normalized to the detected width
         pass
+```
+
+### Event Publishing and Correlation ID Tracing
+
+Trace a complete parsing workflow end-to-end using correlation IDs and event
+subscriptions. This enables distributed tracing and monitoring across service
+boundaries.
+
+**Example: Subscribe to all events for a specific workflow**
+
+```python
+from splurge_dsv import Dsv, DsvConfig, PubSubSolo
+from uuid import uuid4
+
+# Create a unique identifier for this workflow
+workflow_id = str(uuid4())
+
+# Define an event callback
+def on_parse_event(message):
+    """Handle parsing events."""
+    print(f"[{message.topic}] Correlation: {message.correlation_id} | Time: {message.timestamp}")
+    if message.data:
+        print(f"  Data: {message.data}")
+
+# Subscribe to all events for this workflow
+PubSubSolo.subscribe(
+    topic="*",
+    callback=on_parse_event,
+    correlation_id=workflow_id,
+    scope="splurge-dsv"
+)
+
+# Create a parser with the same correlation ID
+config = DsvConfig(delimiter=",")
+parser = Dsv(config=config, correlation_id=workflow_id)
+
+# Perform parsing operations — all events will be captured
+result = parser.parse("name,age,city")
+print(f"Result: {result}")
+
+# Drain the event queue to ensure all callbacks are processed
+PubSubSolo.drain(timeout_ms=2000, scope="splurge-dsv")
+```
+
+Output:
+```
+[dsv.init] Correlation: abc-123-xyz | Time: 2025-11-08 10:30:45.123456
+[dsv.parse.begin] Correlation: abc-123-xyz | Time: 2025-11-08 10:30:45.123489
+[dsv.parse.end] Correlation: abc-123-xyz | Time: 2025-11-08 10:30:45.123512
+Result: ['name', 'age', 'city']
+```
+
+**Example: Subscribe to specific event topics**
+
+```python
+from splurge_dsv import Dsv, DsvConfig, PubSubSolo
+
+def on_error(message):
+    """Handle only error events."""
+    print(f"ERROR in {message.topic}: {message.data}")
+
+def on_completion(message):
+    """Handle completion events."""
+    print(f"Completed: {message.topic}")
+
+# Subscribe to error events only
+PubSubSolo.subscribe(
+    topic="dsv.*.error",
+    callback=on_error,
+    correlation_id=None,  # Receive errors for any correlation_id
+    scope="splurge-dsv"
+)
+
+# Subscribe to completion events only
+PubSubSolo.subscribe(
+    topic="dsv.*.end",
+    callback=on_completion,
+    scope="splurge-dsv"
+)
+
+config = DsvConfig(delimiter=",")
+parser = Dsv(config)
+
+# Perform parsing
+try:
+    result = parser.parse("a,b,c")
+except Exception as e:
+    print(f"Exception: {e}")
+
+# Drain events
+PubSubSolo.drain(timeout_ms=1000, scope="splurge-dsv")
+```
+
+**Example: Stream processing with event monitoring**
+
+```python
+from splurge_dsv import Dsv, DsvConfig, PubSubSolo
+from uuid import uuid4
+
+# Create workflow correlation ID
+correlation_id = str(uuid4())
+
+# Track streaming progress via events
+chunk_count = 0
+
+def on_stream_event(message):
+    global chunk_count
+    if message.topic == "dsv.parse.file.stream.chunk":
+        chunk_count += 1
+        print(f"Processed chunk {chunk_count}")
+
+PubSubSolo.subscribe(
+    topic="dsv.parse.file.stream.*",
+    callback=on_stream_event,
+    correlation_id=correlation_id,
+    scope="splurge-dsv"
+)
+
+# Create parser and stream a file
+config = DsvConfig(delimiter=",", chunk_size=100)
+parser = Dsv(config, correlation_id=correlation_id)
+
+for chunk in parser.parse_file_stream("large_file.csv"):
+    for row in chunk:
+        # Process row
+        pass
+
+# Ensure all events are processed
+PubSubSolo.drain(timeout_ms=2000, scope="splurge-dsv")
+print(f"Total chunks processed: {chunk_count}")
+```
+
+**Example: Error handling with correlation tracking**
+
+```python
+from splurge_dsv import Dsv, DsvConfig, PubSubSolo, SplurgeDsvOSError
+
+correlation_id = "critical-import-123"
+errors = []
+
+def capture_errors(message):
+    """Capture error events."""
+    if "error" in message.topic:
+        errors.append({
+            "topic": message.topic,
+            "correlation_id": message.correlation_id,
+            "error_details": message.data,
+            "timestamp": message.timestamp
+        })
+
+PubSubSolo.subscribe(
+    topic="*",
+    callback=capture_errors,
+    correlation_id=correlation_id,
+    scope="splurge-dsv"
+)
+
+config = DsvConfig(delimiter=",")
+parser = Dsv(config, correlation_id=correlation_id)
+
+try:
+    # Attempt to parse a non-existent file
+    rows = parser.parse_file("missing.csv")
+except SplurgeDsvOSError as e:
+    print(f"File error: {e}")
+
+PubSubSolo.drain(timeout_ms=1000, scope="splurge-dsv")
+
+# Review all errors captured during this workflow
+for error in errors:
+    print(f"Error [{error['topic']}]: {error['error_details']}")
 ```
 
 ---
