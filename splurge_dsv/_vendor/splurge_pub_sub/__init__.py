@@ -32,6 +32,12 @@ Topic Filtering (Phase 2):
     >>> pattern.matches("user.created")
     True
 
+PubSubSolo - Scoped Singleton (Phase 2):
+    >>> from splurge_pub_sub import PubSubSolo, PubSubAggregator
+    >>> bus_a = PubSubSolo.get_instance(scope="package_a")
+    >>> bus_b = PubSubSolo.get_instance(scope="package_b")
+    >>> aggregator = PubSubAggregator(pubsubs=[bus_a, bus_b])
+
 Version: 2025.0.0
 License: MIT
 Author: Jim Schilling
@@ -51,15 +57,19 @@ from .exceptions import (
 from .filters import TopicPattern
 from .message import Message
 from .pubsub import PubSub
+from .pubsub_aggregator import PubSubAggregator
+from .pubsub_solo import PubSubSolo
 from .types import Callback, MessageData, SubscriberId, Topic
 from .utility import generate_correlation_id, is_valid_correlation_id, validate_correlation_id
 
-__version__ = "2025.2.0"
+__version__ = "2025.3.2"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
 __all__ = [
     "PubSub",
+    "PubSubAggregator",
+    "PubSubSolo",
     "Message",
     "Callback",
     "MessageData",

@@ -35,6 +35,8 @@ except Exception:
     # the original failure. Swallowing ensures import-time is resilient.
     pass
 
+from ._vendor.splurge_pub_sub.pubsub_solo import PubSubSolo
+
 # Local imports
 from .dsv import Dsv, DsvConfig
 from .dsv_helper import DsvHelper
@@ -51,7 +53,7 @@ from .exceptions import (
 )
 from .string_tokenizer import StringTokenizer
 
-__version__ = "2025.5.4"
+__version__ = "2025.6.0"
 __author__ = "Jim Schilling"
 __license__ = "MIT"
 
@@ -73,4 +75,6 @@ __all__ = [
     "SplurgeDsvRuntimeError",
     # Utility classes
     "StringTokenizer",
+    # PubSubSolo
+    "PubSubSolo",
 ]

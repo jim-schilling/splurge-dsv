@@ -8,7 +8,9 @@ Domains:
 """
 
 import logging
+import queue
 import threading
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -159,6 +161,20 @@ class PubSub:
         # Initialize correlation_ids set with instance correlation_id
         self._correlation_ids: set[str] = {self._correlation_id}
 
+        # Queue infrastructure for async message dispatch
+        self._message_queue: queue.Queue[Message] = queue.Queue()
+        self._worker_thread: threading.Thread | None = None
+        self._worker_stop_event = threading.Event()
+
+        # Start worker thread
+        self._worker_thread = threading.Thread(
+            target=self._worker_loop,
+            name="PubSub-Worker",
+            daemon=True,
+        )
+        self._worker_thread.start()
+        logger.debug("PubSub worker thread started")
+
     def subscribe(
         self,
         topic: str,
@@ -257,6 +273,72 @@ class PubSub:
         # Otherwise, exact match required
         return entry.correlation_id_filter == message.correlation_id
 
+    def _worker_loop(self) -> None:
+        """Background worker thread loop that processes queued messages.
+
+        Continuously dequeues messages and dispatches them to subscribers.
+        Stops when shutdown is signaled.
+        """
+        while not self._worker_stop_event.is_set():
+            message = None
+            try:
+                # Get message from queue with timeout for responsive shutdown
+                try:
+                    message = self._message_queue.get(timeout=0.1)
+                except queue.Empty:
+                    continue
+
+                # Process the message
+                self._dispatch_message(message)
+
+            except Exception as e:
+                # Log worker thread exceptions but don't crash
+                logger.error(f"Error in worker thread: {e}", exc_info=True)
+            finally:
+                # Always mark task as done, even if exception occurred
+                # This ensures drain() doesn't hang
+                if message is not None:
+                    try:
+                        self._message_queue.task_done()
+                    except ValueError:
+                        # task_done() called more times than get() - shouldn't happen but be safe
+                        pass
+
+    def _dispatch_message(self, message: Message) -> None:
+        """Dispatch a message to all matching subscribers.
+
+        Args:
+            message: The message to dispatch
+        """
+        topic = message.topic
+
+        # Get snapshot of subscribers (release lock before callbacks)
+        with self._lock:
+            # Skip dispatch if shutdown
+            if self._is_shutdown:
+                return
+            topic_subscribers = list(self._subscribers.get(topic, []))
+            wildcard_subscribers = list(self._wildcard_subscribers)
+
+        # Execute callbacks outside lock to allow re-entrant publishes
+        # Check topic-based subscribers
+        for entry in topic_subscribers:
+            if self._matches_correlation_id(message, entry):
+                try:
+                    entry.callback(message)
+                except Exception as e:
+                    # Call error handler for subscriber exceptions
+                    self._error_handler(e, topic)
+
+        # Check wildcard subscribers (topic="*")
+        for entry in wildcard_subscribers:
+            if self._matches_correlation_id(message, entry):
+                try:
+                    entry.callback(message)
+                except Exception as e:
+                    # Call error handler for subscriber exceptions
+                    self._error_handler(e, topic)
+
     def publish(
         self,
         topic: str,
@@ -267,8 +349,12 @@ class PubSub:
     ) -> None:
         """Publish a message to a topic.
 
+        Messages are enqueued and dispatched asynchronously by a background worker thread.
+        This method returns immediately after enqueueing, ensuring publishers never block
+        on subscriber execution.
+
         All subscribers for the topic receive the message via their callbacks.
-        Callbacks are invoked synchronously in the order subscriptions were made.
+        Callbacks are invoked asynchronously in the order subscriptions were made.
 
         If a callback raises an exception, it is passed to the error handler.
         Exceptions in one callback do not affect other callbacks or the publisher.
@@ -285,6 +371,7 @@ class PubSub:
         Raises:
             SplurgePubSubValueError: If topic is empty or not a string, or correlation_id is invalid
             SplurgePubSubTypeError: If data is not a dict[str, Any] or has non-string keys
+            SplurgePubSubRuntimeError: If the bus is shutdown
 
         Example:
             >>> bus = PubSub()
@@ -294,7 +381,12 @@ class PubSub:
             >>> bus.publish("order.created", {"order_id": 42}, metadata={"source": "api"})
             >>> bus.publish("order.created", correlation_id="custom-id")
             >>> bus.publish("order.created")  # Empty data and metadata
+            >>> bus.drain()  # Wait for messages to be delivered
         """
+        # Check shutdown state
+        if self._is_shutdown:
+            raise SplurgePubSubRuntimeError("Cannot publish: PubSub has been shutdown")
+
         # Validate input
         if not topic or not isinstance(topic, str):
             raise SplurgePubSubValueError(f"Topic must be a non-empty string, got: {topic!r}")
@@ -318,29 +410,8 @@ class PubSub:
             correlation_id=message_correlation_id,
         )
 
-        # Get snapshot of subscribers (release lock before callbacks)
-        with self._lock:
-            topic_subscribers = list(self._subscribers.get(topic, []))
-            wildcard_subscribers = list(self._wildcard_subscribers)
-
-        # Execute callbacks outside lock to allow re-entrant publishes
-        # Check topic-based subscribers
-        for entry in topic_subscribers:
-            if self._matches_correlation_id(message, entry):
-                try:
-                    entry.callback(message)
-                except Exception as e:
-                    # Call error handler for subscriber exceptions
-                    self._error_handler(e, topic)
-
-        # Check wildcard subscribers (topic="*")
-        for entry in wildcard_subscribers:
-            if self._matches_correlation_id(message, entry):
-                try:
-                    entry.callback(message)
-                except Exception as e:
-                    # Call error handler for subscriber exceptions
-                    self._error_handler(e, topic)
+        # Enqueue message for async dispatch
+        self._message_queue.put(message)
 
     def unsubscribe(
         self,
@@ -428,11 +499,59 @@ class PubSub:
                     del self._subscribers[topic]
                     logger.debug(f"Subscribers cleared for topic '{topic}'")
 
+    def drain(self, timeout: int = 2000) -> bool:
+        """Wait for the message queue to be drained (empty).
+
+        Blocks until all queued messages have been processed by the worker thread,
+        or until the timeout expires.
+
+        Args:
+            timeout: Maximum time to wait in milliseconds. Defaults to 2000ms.
+
+        Returns:
+            True if queue was drained within timeout, False if timeout expired.
+
+        Example:
+            >>> bus = PubSub()
+            >>> bus.subscribe("topic", callback)
+            >>> bus.publish("topic", {"data": "test"})
+            >>> bus.drain()  # Wait for message to be delivered
+            True
+            >>> bus.drain(timeout=100)  # Wait up to 100ms
+        """
+        if self._is_shutdown:
+            return True  # Already shutdown, queue should be empty
+
+        # Convert milliseconds to seconds
+        timeout_seconds = timeout / 1000.0
+        start_time = time.time()
+
+        # Poll until queue is empty and all tasks are done
+        # Check both empty() and unfinished_tasks to handle race conditions
+        while True:
+            # Check if queue is empty AND all tasks are done
+            if self._message_queue.empty() and self._message_queue.unfinished_tasks == 0:
+                return True
+
+            # Check timeout
+            elapsed = time.time() - start_time
+            if elapsed >= timeout_seconds:
+                return False
+
+            # Small sleep to avoid busy-waiting, but check frequently
+            sleep_time = min(0.01, timeout_seconds - elapsed)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                # Timeout expired, return False
+                return False
+
     def shutdown(self) -> None:
         """Shutdown the bus and prevent further operations.
 
-        Clears all subscribers and sets shutdown flag. Subsequent calls to
-        subscribe() or publish() will raise SplurgePubSubRuntimeError.
+        Signals the worker thread to stop, waits for it to finish, clears all
+        subscribers, and sets shutdown flag. Subsequent calls to subscribe() or
+        publish() will raise SplurgePubSubRuntimeError.
 
         Safe to call multiple times (idempotent).
 
@@ -444,10 +563,26 @@ class PubSub:
             >>> bus.subscribe("topic", callback)  # Raises SplurgePubSubRuntimeError
         """
         with self._lock:
+            if self._is_shutdown:
+                return  # Already shutdown
+
+            self._is_shutdown = True
+
+        # Signal worker thread to stop
+        self._worker_stop_event.set()
+
+        # Wait for worker thread to finish
+        if self._worker_thread is not None and self._worker_thread.is_alive():
+            self._worker_thread.join(timeout=5.0)
+            if self._worker_thread.is_alive():
+                logger.warning("Worker thread did not stop within timeout")
+
+        # Clear subscribers
+        with self._lock:
             self._subscribers.clear()
             self._wildcard_subscribers.clear()
-            self._is_shutdown = True
-            logger.debug("PubSub shutdown complete")
+
+        logger.debug("PubSub shutdown complete")
 
     def on(self, topic: Topic) -> "TopicDecorator":
         """Create a decorator for subscribing to a topic.

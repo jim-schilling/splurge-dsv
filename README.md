@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 [![CI](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml/badge.svg)](https://github.com/jim-schilling/splurge-dsv/actions/workflows/ci-quick-test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen.svg)](https://github.com/jim-schilling/splurge-dsv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![mypy](https://img.shields.io/badge/mypy-checked-black)](https://mypy-lang.org/)
 
@@ -23,79 +23,10 @@ A robust Python library for parsing and processing delimited-separated value (DS
 - **CLI Tool**: Command-line interface for quick parsing and inspection of DSV files
 - **Robust Error Handling**: Clear and specific exceptions for various error scenarios
 - **Modern API**: Object-oriented API with `Dsv` and `DsvConfig` classes for easy configuration and reuse
+- **Event Publishing**: Integrated event publishing using `splurge-pub-sub` for monitoring parsing progress and events
 - **Comprehensive Documentation**: In-depth API reference and usage examples
-- **Exhaustive Testing**: 272 tests with 90% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
+- **Exhaustive Testing**: 297 tests with 87% code coverage including property-based testing, edge case testing, and cross-platform compatibility validation
 
-**⚠️ CHANGES in v2025.5.1**
-> - **Vendored Dependencies Update**: `splurge-exceptions` and `splurge-safe-io` have been updated.
-> - **Bumped Versions**:
->   - Updated version to 2025.5.1 in `__init__.py` and `pyproject.toml`.
-> - **MyPy Configuration Update**:
->   - Updated MyPy configuration to relax strictness on examples.
->   - Updated `ci-lint-and-typecheck.yml` to run MyPy on the entire codebase.
->   - Updated pre-commit hook for MyPy to check the full codebase.
-> - **Pytest Coverage Configuration Update**:
->   - Updated coverage configuration to omit vendor and test files from reports.
-> - **See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes.**
-
-**⚠️ CHANGES in v2025.5.0**
-> - **Vendored Dependencies**: `splurge-exceptions` and `splurge-safe-io` are now vendored.
->   - Removed pip dependencies on `splurge-exceptions` and `splurge-safe-io`.
->   - All functionality remains the same; imports continue to work as before.
->   - See [CHANGELOG.md](CHANGELOG.md) for detailed migration notes.
-
-**⚠️ CHANGES in v2025.4.0**
-> - **Exception Hierarchy Refactored**: All exceptions now leverage the `splurge-exceptions` library with a unified hierarchy.
->   - All exceptions inherit from `SplurgeDsvError(SplurgeFrameworkError)`.
->   - Encoding/Decoding errors now map to `SplurgeDsvLookupError`.
->   - File I/O errors map to `SplurgeDsvOSError`.
->   - General runtime errors map to `SplurgeDsvRuntimeError`.
->   - Parameter/type/value validation errors use `SplurgeDsvTypeError`, and `SplurgeDsvValueError`.
->   - Removed: Many specialized `SplurgeDsv*Error` classes (e.g., `SplurgeDsvFileNotFoundError`, `SplurgeDsvFilePermissionError`) in favor of the unified hierarchy.
->   - See [API-REFERENCE.md](docs/api/API-REFERENCE.md) for the complete exception hierarchy and migration guidance.
-
-**⚠️ CHANGES in v2025.3.2**
-> - **splurge-safe-io** dependency has been updated to v2025.0.6+.
->   - This change improves compatibility and stability with the latest features of the `splurge-safe-io` package.
->   - Code and tests have been updated to align with the new version of the dependency, ensuring continued robust and secure file I/O operations.
-
-**⚠️ CHANGES in v2025.3.1**
-> - **skip_empty_lines** option added to `DsvConfig`, `DsvHelper`, and CLI.
->   - This option allows users to skip logical empty lines when parsing DSV files.
-
-**⚠️ CHANGES in v2025.3.0**
-> - **Commit-Only Release**: v2025.3.0 is a commit-only release and will not be published to PyPI.
-> - The legacy `parse_stream()` helpers were removed in release 2025.3.0.
->   - Use `parse_file_stream()` on `Dsv`/`DsvHelper` for stream-based parsing of files. This standardizes the API naming and clarifies that streaming helpers accept file paths rather than arbitrary iterables.
-> - TextFileHelper, SafeTextFileReader, SafeTextFileWriter, and PathValidator, as well as all their associated tests have been removed in this release.
->   - Their functionality has been migrated in favor of the `splurge-safe-io` package, which provides robust and secure file I/O operations.
->   - This change reduces code duplication and improves maintainability by leveraging the functionality of `splurge-safe-io`.
->   - Users should refer to the `splurge-safe-io` documentation for details on its usage and features.
-> - **See API-REFERENCE.md for migration guidance and complete reference documentation, with usage examples.**
-
-**⚠️ CHANGES in v2025.2.2**
-> - **Deprecated Warning**: The following modules and their associated classes and functions are deprecated and will be removed in a future release (2025.3.0). Users are encouraged to transition to the `splurge-safe-io` package for these functionalities:
->   - `splurge_dsv.safe_text_file_reader`
->   - `splurge_dsv.safe_text_file_writer`
->   - `splurge_dsv.path_validator`
->   - `splurge_dsv.text_file_helper`
-> - **New Exception**: Added `SplurgeDsvFileExistsError` to handle file existence errors.
-> - **Fixed Exception Mapping**: Many errors were incorrectly mapped to SplurgeDsvEncodingError; this has been corrected to use appropriate exception types. 
->   - Some exceptions were not mapped to any SplurgeDsv* exception; these have also been corrected.
-> - **3rd-Party Dependency Additions**: Added `splurge-safe-io (v2025.0.4)`.
->   - `splurge-safe-io` is a new dependency that provides robust and secure file I/O operations, including safe text file reading and writing with deterministic newline handling and path validation.
->   - This change reduces code duplication and improves maintainability by leveraging the functionality of `splurge-safe-io`.
->   - Users should refer to the `splurge-safe-io` documentation for details on its usage and features.
-> - **Code Refactoring**: Refactored `SafeTextFileReader`, `SafeTextFileWriter`, and `PathValidator` to utilize `splurge-safe-io` implementations internally, ensuring consistent behavior and reducing maintenance overhead.
-> - **This release maintains backward compatibility** for existing users, but users are encouraged to transition to `splurge-safe-io` for future-proofing their codebases.
->   - **_This release is a commit-only release and will not be published to PyPI._**
-
-**⚠️ BREAKING CHANGES in v2025.2.0**
->
-> - **Exception Names Changed**: All exceptions now use `SplurgeDsv*` prefix (e.g., `SplurgeParameterError` → `SplurgeDsvParameterError`)
-> - **Resource Manager Removed**: The `ResourceManager` module and all related classes have been completely removed
->
-> See the [CHANGELOG](CHANGELOG.md) for migration guidance.
 
 ## Installation
 
@@ -178,7 +109,8 @@ rows = dsv.parse_file("data.csv")
 
 ## Documentation
 
-- **[Detailed Documentation](docs/README-details.md)**: Complete API reference, CLI options, and examples
+- **[Detailed Documentation](docs/README-DETAILS.md)**: Complete API reference, CLI options, and examples
+- **[API Reference](docs/api/API-REFERENCE.md)**: In-depth documentation of classes and methods
 - **[Testing Best Practices](docs/testing_best_practices.md)**: Comprehensive testing guidelines and patterns
 - **[Hypothesis Usage Patterns](docs/hypothesis_usage_patterns.md)**: Property-based testing guide
 - **[Changelog](CHANGELOG.md)**: Release notes and migration guides
@@ -200,8 +132,6 @@ Recommended usage:
     manager or `SafeTextFileWriter` which will normalize to LF.
 - When reading unknown files, the `open_text` / `SafeTextFileReader` will
     provide deterministic normalization regardless of the source.
-- `SplurgeResourceAcquisitionError` - Resource acquisition failures
-- `SplurgeResourceReleaseError` - Resource cleanup failures
 
 ## Development
 
@@ -239,7 +169,7 @@ pytest tests/ --durations=10
 ```
 
 #### Test Quality Standards
-- **94%+ Code Coverage**: All public APIs and critical paths covered
+- **87%+ Code Coverage**: All public APIs and critical paths covered
 - **Property-Based Testing**: Hypothesis framework validates complex scenarios
 - **Cross-Platform Compatibility**: Tests run on Windows, Linux, and macOS
 - **Performance Regression Detection**: Automated benchmarks prevent slowdowns
@@ -270,8 +200,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## More Documentation
 
-- Detailed docs: [docs/README-details.md](docs/README-details.md)
-- E2E testing coverage: [docs/e2e_testing_coverage.md](docs/e2e_testing_coverage.md)
+- Detailed docs: [docs/README-DETAILS.md](docs/README-DETAILS.md)
 
 ## Contributing
 

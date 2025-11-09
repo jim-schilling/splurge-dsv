@@ -22,13 +22,12 @@ from os import PathLike
 from pathlib import Path
 from uuid import uuid4
 
-from splurge_dsv.exceptions import SplurgeDsvError
-
-from ._vendor.splurge_pub_sub.pubsub import PubSub
+from ._vendor.splurge_pub_sub.pubsub_solo import PubSubSolo
 
 # Local imports
 from .dsv_config import DsvConfig
 from .dsv_helper import DsvHelper
+from .exceptions import SplurgeDsvError
 
 
 class Dsv:
@@ -43,17 +42,6 @@ class Dsv:
         config (DsvConfig): Configuration instance used for parsing calls.
         correlation_id (str): Unique identifier for tracing this instance's operations.
     """
-
-    _pubsub: PubSub = PubSub()
-
-    @classmethod
-    def get_pubsub(cls) -> PubSub:
-        """Get the pubsub instance for the parser."""
-        return cls._pubsub
-
-    @classmethod
-    def get_correlation_id(cls) -> str:
-        return cls._pubsub.correlation_id
 
     @property
     def correlation_id(self) -> str:
@@ -76,7 +64,7 @@ class Dsv:
         """
         self._correlation_id = correlation_id or str(uuid4())
         self._config = config
-        self._pubsub.publish(topic="dsv.init", correlation_id=self._correlation_id)
+        PubSubSolo.publish(topic="dsv.init", correlation_id=self._correlation_id, scope="splurge-dsv")
 
     @property
     def config(self) -> DsvConfig:
@@ -99,10 +87,7 @@ class Dsv:
             SplurgeDsvValueError: If the configured delimiter is invalid.
             SplurgeDsvColumnMismatchError: If column validation fails.
         """
-        self._pubsub.publish(
-            topic="dsv.parse.begin",
-            correlation_id=self.correlation_id,
-        )
+        PubSubSolo.publish(topic="dsv.parse.begin", correlation_id=self.correlation_id, scope="splurge-dsv")
 
         try:
             result = DsvHelper.parse(
@@ -117,10 +102,12 @@ class Dsv:
                 correlation_id=self.correlation_id,
             )
         except SplurgeDsvError as e:
-            self._pubsub.publish(topic="dsv.parse.error", data={"error": e}, correlation_id=self.correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.parse.error", data={"error": e}, correlation_id=self.correlation_id, scope="splurge-dsv"
+            )
             raise
         finally:
-            self._pubsub.publish("dsv.parse.end", correlation_id=self.correlation_id)
+            PubSubSolo.publish(topic="dsv.parse.end", correlation_id=self.correlation_id, scope="splurge-dsv")
 
         return result
 
@@ -147,7 +134,7 @@ class Dsv:
             >>> parser.parses(["a,b", "c,d"])
             [['a', 'b'], ['c', 'd']]
         """
-        self._pubsub.publish(topic="dsv.parses.begin", correlation_id=self.correlation_id)
+        PubSubSolo.publish(topic="dsv.parses.begin", correlation_id=self.correlation_id, scope="splurge-dsv")
 
         try:
             result = DsvHelper.parses(
@@ -163,10 +150,12 @@ class Dsv:
                 correlation_id=self.correlation_id,
             )
         except SplurgeDsvError as e:
-            self._pubsub.publish(topic="dsv.parses.error", data={"error": e}, correlation_id=self.correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.parses.error", data={"error": e}, correlation_id=self.correlation_id, scope="splurge-dsv"
+            )
             raise
         finally:
-            self._pubsub.publish(topic="dsv.parses.end", correlation_id=self.correlation_id)
+            PubSubSolo.publish(topic="dsv.parses.end", correlation_id=self.correlation_id, scope="splurge-dsv")
 
         return result
 
@@ -193,8 +182,11 @@ class Dsv:
             SplurgeDsvTypeError: If the input is not a list of strings.
             SplurgeDsvRuntimeError: For other runtime errors.
         """
-        self._pubsub.publish(
-            topic="dsv.parse.file.begin", data={"file_path": str(file_path)}, correlation_id=self.correlation_id
+        PubSubSolo.publish(
+            topic="dsv.parse.file.begin",
+            data={"file_path": str(file_path)},
+            correlation_id=self.correlation_id,
+            scope="splurge-dsv",
         )
 
         try:
@@ -214,10 +206,12 @@ class Dsv:
                 correlation_id=self.correlation_id,
             )
         except SplurgeDsvError as e:
-            self._pubsub.publish(topic="dsv.parse.file.error", data={"error": e}, correlation_id=self.correlation_id)
+            PubSubSolo.publish(
+                topic="dsv.parse.file.error", data={"error": e}, correlation_id=self.correlation_id, scope="splurge-dsv"
+            )
             raise
         finally:
-            self._pubsub.publish(topic="dsv.parse.file.end", correlation_id=self.correlation_id)
+            PubSubSolo.publish(topic="dsv.parse.file.end", correlation_id=self.correlation_id, scope="splurge-dsv")
 
         return result
 
@@ -246,8 +240,11 @@ class Dsv:
             SplurgeDsvTypeError: If the input is not a list of strings.
             SplurgeDsvRuntimeError: For other unexpected errors.
         """
-        self._pubsub.publish(
-            topic="dsv.parse.file.stream.begin", data={"file_path": str(file_path)}, correlation_id=self.correlation_id
+        PubSubSolo.publish(
+            topic="dsv.parse.file.stream.begin",
+            data={"file_path": str(file_path)},
+            correlation_id=self.correlation_id,
+            scope="splurge-dsv",
         )
 
         try:
@@ -269,11 +266,15 @@ class Dsv:
                 correlation_id=self.correlation_id,
             )
         except SplurgeDsvError as e:
-            self._pubsub.publish(
-                topic="dsv.parse.file.stream.error", data={"error": e}, correlation_id=self.correlation_id
+            PubSubSolo.publish(
+                topic="dsv.parse.file.stream.error",
+                data={"error": e},
+                correlation_id=self.correlation_id,
+                scope="splurge-dsv",
             )
             raise
         finally:
-            self._pubsub.publish(topic="dsv.parse.file.stream.end", correlation_id=self.correlation_id)
-
+            PubSubSolo.publish(
+                topic="dsv.parse.file.stream.end", correlation_id=self.correlation_id, scope="splurge-dsv"
+            )
         return result

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and the versioning follows CalVer.
 
+### [2025.6.0] - 2025-11-08
+
+### Updated
+- Bumped version to 2025.6.0 in `__init__.py` and `pyproject.toml`.
+- Updated vendored `splurge-pub-sub` to v2025.3.2 to incorporate latest improvements and features.
+- Refactored imports in `__init__.py` to include `PubSubSolo` from the vendored `splurge-pub-sub` package.
+- Refactored module-level/class-level PubSub usage to utilize `PubSubSolo` for event publishing.
+   - This change enforces a singleton PubSub instance (i.e., `PubSubSolo`) for all event publishing within the `splurge_dsv` library, ensuring consistent event handling and reducing complexity.
+- Updated example code and test(s) to utilize `PubSubSolo` for event publishing, subscription, and handling.
+
 ## [2025.5.2] - 2025-11-01
 
 ### Updated
